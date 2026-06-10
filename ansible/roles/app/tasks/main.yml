@@ -1,0 +1,19 @@
+---
+- name: Pull latest simop Docker image
+  podman_image:
+    name: simop-image
+    tag: latest
+    pull: yes
+  become: yes
+
+- name: Create database volume if not exists
+  shell: podman volume create {{ database_volume }} 2>/dev/null || true
+  become: yes
+
+- name: Ensure simop service is enabled and started
+  systemd:
+    name: simop
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  become: yes

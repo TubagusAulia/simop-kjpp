@@ -1,0 +1,17 @@
+---
+- name: Configure and Deploy Simop App
+  hosts: webserver
+  gather_facts: yes
+  
+  handlers:
+    - name: Reload systemd and restart simop
+      systemd:
+        daemon_reload: yes
+        name: simop
+        state: restarted
+        enabled: yes
+      become: yes
+
+  roles:
+    - webserver
+    - app

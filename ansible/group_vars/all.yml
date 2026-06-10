@@ -1,0 +1,7 @@
+---
+# Generic variables for all servers
+php_version: "8.1"
+nginx_port: 80
+app_path: /var/www/simop
+database_volume: simop-db
+service_name: simop

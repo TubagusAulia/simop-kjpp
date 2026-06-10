@@ -1,3 +1,4 @@
+# Laravel & Project files
 *.log
 .DS_Store
 .env
@@ -22,3 +23,11 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Ansible & Infrastructure (IMPORTANT - keep local)
+ansible/inventory/hosts.ini
+.ssh/
+*.pem
+*.key
+*.service
+secrets/

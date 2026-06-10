@@ -1,0 +1,33 @@
+---
+- name: Ensure Podman is installed
+  dnf:
+    name: podman
+    state: present
+  become: yes
+
+- name: Create systemd service directory
+  file:
+    path: /etc/systemd/system
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Deploy systemd service file
+  template:
+    src: ../../templates/simop.service.j2
+    dest: /etc/systemd/system/simop.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: Reload systemd and restart simop
+
+- name: Configure sudoers for podman (passwordless sudo for specific user)
+  copy:
+    dest: /etc/sudoers.d/homelab-podman
+    content: |
+      homelab ALL=(ALL) NOPASSWD: /usr/bin/podman
+      homelab ALL=(ALL) NOPASSWD: /usr/bin/systemctl
+    mode: '0440'
+    validate: /usr/sbin/visudo -cf %s
+  become: yes

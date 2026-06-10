@@ -1,0 +1,5 @@
+# COPY THIS FILE and rename to "hosts.ini"
+# Then replace IP_ADDRESS and USERNAME with YOUR server details
+
+[webserver]
+IP_ADDRESS ansible_user=USERNAME ansible_python_interpreter=/usr/bin/python3
