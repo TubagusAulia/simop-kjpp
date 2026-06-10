@@ -6,12 +6,7 @@ After=network.target
 Type=simple
 User=root
 Group=root
-WorkingDirectory={{ app_path }}
-ExecStart=/usr/bin/podman run --rm --name {{ service_name }}-app \
-  -p 8080:80 \
-  -v {{ database_volume }}:/var/www/html/database \
-  -v /opt/simop-kjpp/.env:/var/www/html/.env \
-  --user root simop-image:latest bash -c "chown -R www-data:www-data /var/www/html/database && apache2-foreground"
+ExecStart=/usr/bin/podman run --rm --name {{ service_name }}-app -p 8080:80 -v {{ database_volume }}:/var/www/html/database -v /opt/simop-kjpp/.env:/var/www/html/.env --user root simop-image:latest apache2-foreground
 ExecStop=/usr/bin/podman stop {{ service_name }}-app
 Restart=always
 RestartSec=10
