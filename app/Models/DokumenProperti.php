@@ -16,6 +16,7 @@ class DokumenProperti extends Model
         'uploaded_by',
         'tipe_dokumen',
         'nama_dokumen',
+        'deskripsi',
         'file_path',
         'status',
         'catatan',

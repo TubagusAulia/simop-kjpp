@@ -21,6 +21,9 @@ class Properti extends Model
 
     protected $casts = [];
 
+    // Note: Koleksi auto-creation is handled by the seeder for test data,
+    // and by the application logic (via ProyekController) for real data.
+
     public function proyek()
     {
         return $this->belongsTo(Proyek::class, 'proyek_id');
@@ -44,5 +47,21 @@ class Properti extends Model
     public function nilai()
     {
         return $this->hasOne(Nilai::class, 'properti_id');
+    }
+
+    // Collection relationships
+    public function koleksiDokumen()
+    {
+        return $this->hasOne(KoleksiDokumen::class, 'properti_id');
+    }
+
+    public function koleksiFisik()
+    {
+        return $this->hasOne(KoleksiFisik::class, 'properti_id');
+    }
+
+    public function koleksiNilai()
+    {
+        return $this->hasOne(KoleksiNilai::class, 'properti_id');
     }
 }

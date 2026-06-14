@@ -5,7 +5,7 @@ $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
 echo "=== USERS ===\n";
 foreach (\App\Models\User::all() as $u) {
-    echo "  [{$u->id}] {$u->name} | {$u->email} | {$u->role}\n";
+    echo "  [{$u->id}] {$u->name} | {$u->username} | {$u->role}\n";
 }
 
 echo "\n=== PROYEK ===\n";

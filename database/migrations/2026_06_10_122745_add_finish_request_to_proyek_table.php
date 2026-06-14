@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('proyek', function (Blueprint $table) {
-            $table->enum('current_phase', ['dimulai', 'dokumen', 'fisik', 'dinilai', 'selesai'])
-                ->default('dokumen')
-                ->after('status');
+            $table->boolean('finish_requested')->default(false)->after('current_phase');
+            $table->foreignId('finish_requested_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('finish_requested_at')->nullable();
         });
     }
 
@@ -24,7 +24,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('proyek', function (Blueprint $table) {
-            $table->dropColumn('current_phase');
+            $table->dropForeign(['finish_requested_by']);
+            $table->dropColumn(['finish_requested', 'finish_requested_by', 'finish_requested_at']);
         });
     }
 };

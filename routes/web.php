@@ -17,7 +17,7 @@ Route::get('/', function () {
 
 // Dashboard
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
@@ -26,6 +26,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/proyek/create', [ProyekController::class, 'create'])->name('proyek.create');
     Route::post('/proyek', [ProyekController::class, 'store'])->name('proyek.store');
     Route::get('/proyek/{proyek}', [ProyekController::class, 'show'])->name('proyek.show');
+    Route::post('/proyek/{proyek}/request-finish', [ProyekController::class, 'requestFinish'])->name('proyek.request-finish');
+    Route::post('/proyek/{proyek}/accept-finish', [ProyekController::class, 'acceptFinish'])->name('proyek.accept-finish');
+    Route::post('/proyek/{proyek}/selesai-verifikasi-dokumen', [ProyekController::class, 'selesaiVerifikasiDokumen'])->name('proyek.selesai-verifikasi-dokumen');
+    Route::post('/proyek/{proyek}/selesai-verifikasi-fisik', [ProyekController::class, 'selesaiVerifikasiFisik'])->name('proyek.selesai-verifikasi-fisik');
+    Route::post('/proyek/{proyek}/selesai-penilaian', [ProyekController::class, 'selesaiPenilaian'])->name('proyek.selesai-penilaian');
 
     // ===== PROPERTI (Management) =====
     Route::post('/properti/{properti}/update-type', [\App\Http\Controllers\PropertiController::class, 'updateType'])->name('properti.updateType');
@@ -34,6 +39,7 @@ Route::middleware('auth')->group(function () {
     
     // Dokumen Properti
     Route::post('/properti/{properti}/dokumen', [\App\Http\Controllers\DokumenPropertiController::class, 'store'])->name('dokumen.store');
+    Route::put('/dokumen/{dokumen}', [\App\Http\Controllers\DokumenPropertiController::class, 'update'])->name('dokumen.update');
     Route::post('/dokumen/{dokumen}/verifikasi', [\App\Http\Controllers\DokumenPropertiController::class, 'verifikasi'])->name('dokumen.verifikasi');
     Route::delete('/dokumen/{dokumen}', [\App\Http\Controllers\DokumenPropertiController::class, 'destroy'])->name('dokumen.destroy');
 
@@ -70,13 +76,23 @@ Route::middleware('auth')->group(function () {
 
 // Laporan
 Route::prefix('laporan')->middleware('auth')->group(function () {
+    // Laporan list page (unified view with Proyek/Tahunan toggle)
     Route::get('/project', [PropertiController::class, 'laporanProject'])->name('laporan.project');
-    Route::get('/project/{id}', [PropertiController::class, 'getProject'])->name('laporan.project.show');
+
+    // Laporan detail page for a specific proyek (like proyek/show but with Detail + Laporan tabs)
+    Route::get('/proyek/{proyek}', [PropertiController::class, 'laporanProyekShow'])->name('laporan.proyek.show');
+
+    // Download PDF laporan for a specific proyek
+    Route::get('/proyek/{proyek}/pdf', [PropertiController::class, 'downloadPdf'])->name('laporan.proyek.pdf');
+
+    // JSON endpoint for single project data (POST to avoid conflict with /project GET)
+    Route::post('/project/{id}', [PropertiController::class, 'getProject'])->name('laporan.project.data');
     Route::post('/upload', [PropertiController::class, 'uploadLaporan'])->name('laporan.upload');
     Route::delete('/reset/{id}', [PropertiController::class, 'resetLaporan'])->name('laporan.reset');
     Route::get('/tahunan', [PropertiController::class, 'laporanTahunan'])->name('laporan.tahunan');
     Route::get('/tahunan/{year}', [PropertiController::class, 'getTahunanByYear'])->name('laporan.tahunan.show');
     Route::delete('/project/delete/{id}', [PropertiController::class, 'deleteProject'])->name('laporan.project.delete');
+    Route::get('/tahunan/download-pdf/{year}', [PropertiController::class, 'downloadTahunanPdf'])->name('laporan.tahunan.pdf');
     Route::get('/tahunan/download-zip/{year}', [PropertiController::class, 'downloadZipTahunan'])->name('laporan.tahunan.zip');
 });
 

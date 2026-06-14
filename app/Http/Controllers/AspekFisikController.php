@@ -112,6 +112,9 @@ class AspekFisikController extends Controller
             'verified_at' => now(),
         ]);
 
+        if ($request->expectsJson() || $request->header('X-Requested-With')) {
+            return response()->json(['success' => true, 'message' => 'Status aspek fisik berhasil diperbarui.']);
+        }
         return back()->with('success', 'Status aspek fisik berhasil diperbarui.');
     }
 

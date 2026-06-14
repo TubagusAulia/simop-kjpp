@@ -38,7 +38,7 @@
                 <div class="bg-white rounded-lg shadow-lg overflow-hidden">
                     <div class="px-4 py-2 border-b border-gray-100">
                         <p class="text-sm font-medium text-gray-800">{{ Auth::user()->name }}</p>
-                        <p class="text-xs text-gray-500">{{ Auth::user()->email }}</p>
+                        <p class="text-xs text-gray-500">{{ Auth::user()->username }}</p>
                         <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
                             @if(Auth::user()->isAdmin()) bg-purple-100 text-purple-700
                             @elseif(Auth::user()->isKaryawan()) bg-blue-100 text-blue-700

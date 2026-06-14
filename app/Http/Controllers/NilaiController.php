@@ -48,12 +48,6 @@ class NilaiController extends Controller
             ]
         );
 
-        // Update project phase to 'dinilai' if not already past it
-        $proyek = $properti->proyek;
-        if ($proyek && in_array($proyek->current_phase, ['dimulai', 'dokumen', 'fisik'])) {
-            $proyek->update(['current_phase' => 'dinilai']);
-        }
-
         return back()->with('success', 'Penilaian berhasil disimpan.');
     }
 
