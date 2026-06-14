@@ -2,6 +2,9 @@
 
 namespace Tests\Unit\Models;
 
+use App\Models\KoleksiDokumen;
+use App\Models\KoleksiFisik;
+use App\Models\KoleksiNilai;
 use App\Models\Properti;
 use App\Models\Proyek;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -43,21 +46,24 @@ class PropertiTest extends TestCase
     public function test_properti_has_one_koleksi_dokumen(): void
     {
         $properti = Properti::factory()->create();
+        KoleksiDokumen::factory()->create(['properti_id' => $properti->id]);
 
-        $this->assertNotNull($properti->koleksiDokumen);
+        $this->assertNotNull($properti->fresh()->koleksiDokumen);
     }
 
     public function test_properti_has_one_koleksi_fisik(): void
     {
         $properti = Properti::factory()->create();
+        KoleksiFisik::factory()->create(['properti_id' => $properti->id]);
 
-        $this->assertNotNull($properti->koleksiFisik);
+        $this->assertNotNull($properti->fresh()->koleksiFisik);
     }
 
     public function test_properti_has_one_koleksi_nilai(): void
     {
         $properti = Properti::factory()->create();
+        KoleksiNilai::factory()->create(['properti_id' => $properti->id]);
 
-        $this->assertNotNull($properti->koleksiNilai);
+        $this->assertNotNull($properti->fresh()->koleksiNilai);
     }
 }

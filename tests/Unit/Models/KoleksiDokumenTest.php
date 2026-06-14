@@ -4,6 +4,7 @@ namespace Tests\Unit\Models;
 
 use App\Models\KoleksiDokumen;
 use App\Models\Properti;
+use App\Models\Proyek;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -35,7 +36,8 @@ class KoleksiDokumenTest extends TestCase
 
     public function test_koleksi_dokumen_belongs_to_properti(): void
     {
-        $properti = Properti::factory()->create();
+        $proyek = Proyek::factory()->create();
+        $properti = Properti::factory()->create(['proyek_id' => $proyek->id]);
         $koleksi = KoleksiDokumen::factory()->create(['properti_id' => $properti->id]);
 
         $this->assertInstanceOf(Properti::class, $koleksi->properti);
@@ -44,14 +46,22 @@ class KoleksiDokumenTest extends TestCase
 
     public function test_koleksi_dokumen_returns_empty_array_when_wajib_list_is_null(): void
     {
-        $koleksi = KoleksiDokumen::factory()->create(['wajib_list' => null]);
+        $proyek = Proyek::factory()->create();
+        $properti = Properti::factory()->create(['proyek_id' => $proyek->id]);
+        $koleksi = KoleksiDokumen::factory()->create([
+            'properti_id' => $properti->id,
+            'wajib_list' => null,
+        ]);
 
         $this->assertEquals([], $koleksi->getWajibKeys());
     }
 
     public function test_koleksi_dokumen_returns_wajib_keys(): void
     {
+        $proyek = Proyek::factory()->create();
+        $properti = Properti::factory()->create(['proyek_id' => $proyek->id]);
         $koleksi = KoleksiDokumen::factory()->create([
+            'properti_id' => $properti->id,
             'wajib_list' => ['sertifikat', 'imb', 'pbb'],
         ]);
 
@@ -60,32 +70,50 @@ class KoleksiDokumenTest extends TestCase
 
     public function test_koleksi_dokumen_is_wajib_uploaded_returns_true_when_empty(): void
     {
-        $koleksi = KoleksiDokumen::factory()->create(['wajib_list' => []]);
+        $proyek = Proyek::factory()->create();
+        $properti = Properti::factory()->create(['proyek_id' => $proyek->id]);
+        $koleksi = KoleksiDokumen::factory()->create([
+            'properti_id' => $properti->id,
+            'wajib_list' => [],
+        ]);
 
         $this->assertTrue($koleksi->isWajibUploaded());
     }
 
     public function test_koleksi_dokumen_progression_is_zero_when_no_docs(): void
     {
+        $proyek = Proyek::factory()->create();
+        $properti = Properti::factory()->create(['proyek_id' => $proyek->id]);
         $koleksi = KoleksiDokumen::factory()->create([
+            'properti_id' => $properti->id,
             'wajib_list' => ['sertifikat'],
         ]);
 
         $this->assertEquals(0, $koleksi->getProgression());
     }
 
-    public function test_koleksi_dokumen_progression_is_100_when_complete(): void
+    public function test_koleksi_dokumen_mark_complete_updates_status_and_timestamp(): void
     {
+        $proyek = Proyek::factory()->create();
+        $properti = Properti::factory()->create(['proyek_id' => $proyek->id]);
         $koleksi = KoleksiDokumen::factory()->create([
-            'status' => 'selesai',
+            'properti_id' => $properti->id,
+            'status' => 'proses',
         ]);
 
-        $this->assertEquals(100, $koleksi->getProgression());
+        $koleksi->markComplete(1);
+
+        $this->assertEquals('selesai', $koleksi->fresh()->status);
+        $this->assertEquals(1, $koleksi->fresh()->completed_by);
+        $this->assertNotNull($koleksi->fresh()->completed_at);
     }
 
     public function test_koleksi_dokumen_get_task_returns_null_when_complete(): void
     {
+        $proyek = Proyek::factory()->create();
+        $properti = Properti::factory()->create(['proyek_id' => $proyek->id]);
         $koleksi = KoleksiDokumen::factory()->create([
+            'properti_id' => $properti->id,
             'status' => 'selesai',
         ]);
 

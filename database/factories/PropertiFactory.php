@@ -2,9 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\KoleksiDokumen;
-use App\Models\KoleksiFisik;
-use App\Models\KoleksiNilai;
 use App\Models\Properti;
 use App\Models\Proyek;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -25,17 +22,5 @@ class PropertiFactory extends Factory
             'lokasi' => fake()->address(),
             'kategori' => fake()->randomElement(['komersial', 'residential', 'industrial']),
         ];
-    }
-
-    /**
-     * Configure the model factory to create associated koleksi records.
-     */
-    public function configure(): static
-    {
-        return $this->afterCreating(function (Properti $properti) {
-            KoleksiDokumen::factory()->create(['properti_id' => $properti->id]);
-            KoleksiFisik::factory()->create(['properti_id' => $properti->id]);
-            KoleksiNilai::factory()->create(['properti_id' => $properti->id]);
-        });
     }
 }
