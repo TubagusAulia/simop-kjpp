@@ -1,17 +1,51 @@
 ---
-- name: Configure and Deploy Simop App
+# ============================================
+# SIMOP KJPP — Main Ansible Playbook
+# ============================================
+# Usage:
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml --tags rollback
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml --extra-vars "git_repo=https://github.com/you/repo.git"
+# ============================================
+
+- name: Deploy SIMOP KJPP Application
   hosts: webserver
   gather_facts: yes
-  
-  handlers:
-    - name: Reload systemd and restart simop
-      systemd:
-        daemon_reload: yes
-        name: simop
-        state: restarted
-        enabled: yes
-      become: yes
+  become: yes
+
+  vars:
+    git_repo: "{{ git_repo | default('') }}"
+    git_branch: "{{ git_branch | default('main') }}"
 
   roles:
-    - webserver
-    - app
+    - role: webserver
+      tags: [webserver]
+
+    - role: app
+      tags: [app]
+      notify: rollback
+
+    - role: rollback
+      tags: [rollback]
+      when: rollback_triggered | default(false)
+
+  handlers:
+    - name: rollback
+      ansible.builtin.include_role:
+        name: rollback
+      when: rollback_triggered | default(false)
+
+  post_tasks:
+    - name: Verify app is accessible
+      ansible.builtin.uri:
+        url: "http://localhost:{{ app_port }}/"
+        status_code: 200
+        timeout: 10
+      register: final_check
+      retries: 5
+      delay: 3
+      until: final_check.status == 200
+
+    - name: Print success message
+      ansible.builtin.debug:
+        msg: "✅ SIMOP KJPP is live at http://{{ inventory_hostname }}:{{ app_port }}/"

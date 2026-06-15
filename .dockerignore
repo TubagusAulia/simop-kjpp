@@ -1,0 +1,53 @@
+# Dependencies
+vendor/
+node_modules/
+
+# Environment
+.env
+.env.backup
+.env.production
+.env.local
+
+# Version control
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+.fleet/
+
+# Testing
+tests/
+phpunit.xml
+.phpunit.result.cache
+
+# Docs (not needed in container)
+docs/
+*.md
+LICENSE
+
+# CI/CD (not needed in container)
+.github/
+ansible/
+
+# Build artifacts
+/public/build/
+/public/hot/
+
+# Storage (mounted as volume, don't copy)
+/storage/app/
+/storage/framework/
+/storage/logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keys
+*.pem
+*.key
+storage/*.key
+
+# Cache
+bootstrap/cache/*.php

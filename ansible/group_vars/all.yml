@@ -1,7 +1,14 @@
 ---
 # Generic variables for all servers
-php_version: "8.1"
-nginx_port: 80
+# Each teammate customizes hosts.ini with their own server details
+app_name: simop
 app_path: /var/www/simop
-database_volume: simop-db
-service_name: simop
+app_port: 8080
+docker_network: simop-network
+
+# Git settings
+git_repo: ""  # Set in inventory or extra vars: --extra-vars "git_repo=https://github.com/you/repo.git"
+git_branch: main
+
+# Rollback settings
+rollback_keep_releases: 5
