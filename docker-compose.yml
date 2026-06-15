@@ -1,0 +1,31 @@
+# ============================================
+# SIMOP KJPP — Docker Compose (Generic)
+# ============================================
+# Each teammate: copy docker-compose.override.yml.example
+# → docker-compose.override.yml and customize
+# ============================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: simop-app
+    ports:
+      - "8080:80"
+    volumes:
+      - sqlite_data:/var/www/html/database
+      - app_storage:/var/www/html/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  sqlite_data:
+    driver: local
+  app_storage:
+    driver: local

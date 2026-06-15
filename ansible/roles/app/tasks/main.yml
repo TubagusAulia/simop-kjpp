@@ -1,19 +1,100 @@
 ---
-- name: Pull latest simop Docker image
-  podman_image:
-    name: simop-image
-    tag: latest
-    pull: yes
-  become: yes
+# ============================================
+# App Role — Deploy Laravel App via Docker Compose
+# ============================================
 
-- name: Create database volume if not exists
-  shell: podman volume create {{ database_volume }} 2>/dev/null || true
-  become: yes
+- name: Ensure app directory exists
+  ansible.builtin.file:
+    path: "{{ app_path }}"
+    state: directory
+    mode: '0755'
 
-- name: Ensure simop service is enabled and started
-  systemd:
-    name: simop
-    state: started
-    enabled: yes
-    daemon_reload: yes
-  become: yes
+- name: Clone or pull latest code
+  ansible.builtin.git:
+    repo: "{{ git_repo }}"
+    dest: "{{ app_path }}"
+    version: "{{ git_branch }}"
+    force: yes
+  when: git_repo | length > 0
+  notify: Build and deploy app
+
+- name: Copy .env.example to .env (if .env doesn't exist)
+  ansible.builtin.copy:
+    src: "{{ app_path }}/.env.example"
+    dest: "{{ app_path }}/.env"
+    remote_src: yes
+    force: no
+
+- name: Generate Laravel app key (if not set)
+  ansible.builtin.shell: |
+    cd {{ app_path }}
+    php artisan key:generate --no-interaction
+  args:
+    creates: "{{ app_path }}/.env"
+  ignore_errors: yes
+
+- name: Ensure database directory is writable
+  ansible.builtin.file:
+    path: "{{ app_path }}/database"
+    state: directory
+    mode: '0775'
+    recurse: yes
+
+- name: Ensure storage directory is writable
+  ansible.builtin.file:
+    path: "{{ app_path }}/storage"
+    state: directory
+    mode: '0775'
+    recurse: yes
+
+- name: Ensure bootstrap/cache directory is writable
+  ansible.builtin.file:
+    path: "{{ app_path }}/bootstrap/cache"
+    state: directory
+    mode: '0775'
+    recurse: yes
+
+# ── Docker Compose Deploy ────────────────────
+
+- name: Build Docker image
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_path }}"
+    build: yes
+    state: present
+  register: compose_build
+
+- name: Start containers
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_path }}"
+    state: present
+    restarted: "{{ compose_build.changed }}"
+
+- name: Wait for app to be healthy
+  ansible.builtin.uri:
+    url: "http://localhost:{{ app_port }}/"
+    status_code: 200
+    timeout: 10
+  register: health_check
+  retries: 10
+  delay: 5
+  until: health_check.status == 200
+
+- name: Run database migrations
+  community.docker.docker_compose_v2_exec:
+    project_src: "{{ app_path }}"
+    service: app
+    command: php artisan migrate --force --no-interaction
+
+- name: Cache Laravel configuration
+  community.docker.docker_compose_v2_exec:
+    project_src: "{{ app_path }}"
+    service: app
+    command: >
+      sh -c "php artisan config:cache &&
+             php artisan route:cache &&
+             php artisan view:cache"
+
+# ── Handlers ─────────────────────────────────
+
+# Handler: rebuild and redeploy when code changes
+# (triggered by git notify above)

@@ -126,3 +126,21 @@ jobs:
 
       - name: Run tests with coverage
         run: php artisan test --coverage --coverage-text --min=50
+
+      - name: Run tests with Clover XML report
+        run: php artisan test --coverage --coverage-clover=coverage.xml
+
+      - name: Run PHPStan (checkstyle report)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=512M --error-format=checkstyle > phpstan-report.xml || true
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v3
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORG }}
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.php.coverage.reportPaths=coverage.xml
+            -Dsonar.php.tests.reportPath=test-report.xml
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

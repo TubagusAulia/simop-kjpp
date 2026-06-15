@@ -1,0 +1,24 @@
+# ============================================
+# Docker Compose Override — Personal Config
+# ============================================
+# 1. Copy this file: cp docker-compose.override.yml.example docker-compose.override.yml
+# 2. Uncomment and change values to match YOUR server
+# 3. docker-compose.override.yml is gitignored — safe to edit
+# ============================================
+
+# services:
+#   app:
+#     # Change the external port (first number) if 8080 is taken
+#     ports:
+#       - "8080:80"
+#
+#     # Add environment variables if needed
+#     environment:
+#       - APP_ENV=production
+#       - APP_DEBUG=false
+#
+#     # Mount a custom .env file from your server
+#     # (make sure .env exists on server first)
+#     volumes:
+#       - ./database:/var/www/html/database
+#       - ./storage:/var/www/html/storage

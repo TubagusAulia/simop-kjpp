@@ -1,0 +1,7 @@
+---
+- name: Build and deploy app
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_path }}"
+    build: yes
+    state: present
+    restarted: yes

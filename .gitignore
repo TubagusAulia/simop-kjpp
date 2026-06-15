@@ -31,3 +31,6 @@ ansible/inventory/hosts.ini
 *.key
 *.service
 secrets/
+
+# Docker personal config
+docker-compose.override.yml

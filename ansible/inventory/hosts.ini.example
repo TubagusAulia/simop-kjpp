@@ -1,5 +1,14 @@
-# COPY THIS FILE and rename to "hosts.ini"
-# Then replace IP_ADDRESS and USERNAME with YOUR server details
+# ============================================
+# Ansible Inventory — Personal Server Config
+# ============================================
+# 1. Copy this file: cp ansible/inventory/hosts.ini.example ansible/inventory/hosts.ini
+# 2. Replace YOUR_SERVER_IP and YOUR_SSH_USER with your actual values
+# 3. hosts.ini is gitignored — safe to edit
+# ============================================
 
 [webserver]
-IP_ADDRESS ansible_user=USERNAME ansible_python_interpreter=/usr/bin/python3
+YOUR_SERVER_IP ansible_user=YOUR_SSH_USER ansible_python_interpreter=/usr/bin/python3
+
+# Example:
+# [webserver]
+# 192.168.1.100 ansible_user=deploy ansible_python_interpreter=/usr/bin/python3
