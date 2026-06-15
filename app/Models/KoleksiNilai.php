@@ -5,6 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property int $properti_id
+ * @property string $status
+ * @property-read Properti $properti
+ * @property-read User|null $completer
+ */
 class KoleksiNilai extends Model
 {
     use HasFactory;

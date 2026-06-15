@@ -5,6 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property int $proyek_id
+ * @property string|null $tipe_properti
+ * @property string $nama_properti
+ * @property-read Proyek $proyek
+ * @property-read \Illuminate\Database\Eloquent\Collection $dokumens
+ * @property-read \Illuminate\Database\Eloquent\Collection $aspekFisiks
+ * @property-read \Illuminate\Database\Eloquent\Collection $checklistFisiks
+ * @property-read \App\Models\Nilai|null $nilai
+ * @property-read \App\Models\KoleksiDokumen|null $koleksiDokumen
+ * @property-read \App\Models\KoleksiFisik|null $koleksiFisik
+ * @property-read \App\Models\KoleksiNilai|null $koleksiNilai
+ */
 class Properti extends Model
 {
     use HasFactory;

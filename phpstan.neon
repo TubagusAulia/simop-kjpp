@@ -1,0 +1,11 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 3
+    paths:
+        - app/Models/
+        - tests/
+    ignoreErrors:
+        - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Model::verificationStatus\(\)#'
+        - '#Access to an undefined property Illuminate\\Database\\Eloquent\\Model::\$status#'

@@ -6,6 +6,15 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $username
+ * @property string $role
+ * @property string|null $profile_photo
+ * @property-read string $profile_photo_url
+ * @property-read \Illuminate\Database\Eloquent\Collection $proyeks
+ */
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */

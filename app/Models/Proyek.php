@@ -5,6 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $nama_proyek
+ * @property string|null $deskripsi
+ * @property string $status
+ * @property string|null $current_phase
+ * @property int|null $created_by
+ * @property bool $finish_requested
+ * @property-read User|null $creator
+ * @property-read Properti|null $properti
+ * @property-read \Illuminate\Database\Eloquent\Collection $alokasi
+ * @property-read \Illuminate\Database\Eloquent\Collection $users
+ * @property-read \Illuminate\Database\Eloquent\Collection $karyawans
+ * @property-read \Illuminate\Database\Eloquent\Collection $clients
+ * @property-read \Illuminate\Database\Eloquent\Collection $mitras
+ */
 class Proyek extends Model
 {
     use HasFactory;
