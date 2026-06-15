@@ -14,7 +14,7 @@ class KoleksiDokumenTest extends TestCase
 
     public function test_koleksi_dokumen_has_correct_fillable_attributes(): void
     {
-        $koleksi = new KoleksiDokumen();
+        $koleksi = new KoleksiDokumen;
 
         $this->assertEquals([
             'properti_id',
@@ -27,7 +27,7 @@ class KoleksiDokumenTest extends TestCase
 
     public function test_koleksi_dokumen_casts_wajib_list_to_array(): void
     {
-        $koleksi = new KoleksiDokumen();
+        $koleksi = new KoleksiDokumen;
         $casts = $koleksi->getCasts();
 
         $this->assertEquals('array', $casts['wajib_list']);

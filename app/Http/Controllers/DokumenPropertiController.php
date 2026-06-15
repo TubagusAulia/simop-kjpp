@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Properti;
 use App\Models\DokumenProperti;
+use App\Models\Properti;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -33,6 +33,7 @@ class DokumenPropertiController extends Controller
         if ($request->expectsJson() || $request->header('X-Requested-With')) {
             return response()->json(['success' => true, 'message' => 'Dokumen berhasil diunggah.']);
         }
+
         return back()->with('success', 'Dokumen berhasil diunggah.');
     }
 
@@ -96,6 +97,7 @@ class DokumenPropertiController extends Controller
         if ($request->expectsJson() || $request->header('X-Requested-With')) {
             return response()->json(['success' => true, 'message' => 'Status dokumen berhasil diperbarui.']);
         }
+
         return back()->with('success', 'Status dokumen berhasil diperbarui.');
     }
 

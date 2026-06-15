@@ -10,12 +10,12 @@ class UserController extends Controller
     public function search(Request $request)
     {
         $query = $request->get('q');
-        
+
         // Search by name or username
         $users = User::where('role', '!=', 'admin')
-            ->where(function($q) use ($query) {
+            ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('username', 'like', "%{$query}%");
+                    ->orWhere('username', 'like', "%{$query}%");
             })
             ->limit(10)
             ->get(['id', 'name', 'username', 'role']);

@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Services\DocumentRequirementService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class KoleksiDokumen extends Model
 {
@@ -60,15 +61,18 @@ class KoleksiDokumen extends Model
     public function isWajibUploaded(): bool
     {
         $wajibKeys = $this->getWajibKeys();
-        if (empty($wajibKeys)) return true;
+        if (empty($wajibKeys)) {
+            return true;
+        }
 
         $uploadedTypes = $this->properti->dokumens->pluck('tipe_dokumen')->toArray();
 
         foreach ($wajibKeys as $key) {
-            if (!in_array($key, $uploadedTypes)) {
+            if (! in_array($key, $uploadedTypes)) {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -78,9 +82,11 @@ class KoleksiDokumen extends Model
     public function isAllVerified(): bool
     {
         $allDocs = $this->properti->dokumens;
-        if ($allDocs->isEmpty()) return true;
+        if ($allDocs->isEmpty()) {
+            return true;
+        }
 
-        return $allDocs->every(fn($d) => $d->status === 'terverifikasi');
+        return $allDocs->every(fn ($d) => $d->status === 'terverifikasi');
     }
 
     /**
@@ -89,9 +95,12 @@ class KoleksiDokumen extends Model
     public function getWajibUploadedCount(): int
     {
         $wajibKeys = $this->getWajibKeys();
-        if (empty($wajibKeys)) return 0;
+        if (empty($wajibKeys)) {
+            return 0;
+        }
 
         $uploadedTypes = $this->properti->dokumens->pluck('tipe_dokumen')->toArray();
+
         return count(array_intersect($wajibKeys, $uploadedTypes));
     }
 
@@ -124,7 +133,9 @@ class KoleksiDokumen extends Model
         $totalDocs = $this->getTotalCount();
         $verifiedDocs = $this->getVerifiedCount();
 
-        if ($totalWajib === 0 && $totalDocs === 0) return 0;
+        if ($totalWajib === 0 && $totalDocs === 0) {
+            return 0;
+        }
 
         // Phase 1: uploading wajib (0-50%)
         $uploadProgress = 0;
@@ -150,27 +161,30 @@ class KoleksiDokumen extends Model
      */
     public function getTask(): ?array
     {
-        if ($this->status === 'selesai') return null;
+        if ($this->status === 'selesai') {
+            return null;
+        }
 
         $wajibKeys = $this->getWajibKeys();
 
         // Check wajib upload
-        if (!empty($wajibKeys)) {
+        if (! empty($wajibKeys)) {
             $uploadedTypes = $this->properti->dokumens->pluck('tipe_dokumen')->toArray();
-            $missingWajib = array_filter($wajibKeys, fn($key) => !in_array($key, $uploadedTypes));
+            $missingWajib = array_filter($wajibKeys, fn ($key) => ! in_array($key, $uploadedTypes));
 
-            if (!empty($missingWajib)) {
+            if (! empty($missingWajib)) {
                 // Build human-readable missing labels
                 $missingLabels = array_map(function ($key) {
-                    $globalReqs = \App\Services\DocumentRequirementService::getGlobalRequirements();
-                    $typeReqs = \App\Services\DocumentRequirementService::getTypeRequirements($this->properti->tipe_properti);
+                    $globalReqs = DocumentRequirementService::getGlobalRequirements();
+                    $typeReqs = DocumentRequirementService::getTypeRequirements($this->properti->tipe_properti);
                     $allLabels = array_merge($globalReqs, $typeReqs['mandatory'] ?? []);
+
                     return $allLabels[$key] ?? $key;
                 }, $missingWajib);
 
                 return [
                     'role' => 'Klien',
-                    'message' => 'Klien perlu mengunggah dokumen wajib yang belum lengkap: ' . implode(', ', array_values($missingLabels)) . '.',
+                    'message' => 'Klien perlu mengunggah dokumen wajib yang belum lengkap: '.implode(', ', array_values($missingLabels)).'.',
                 ];
             }
         }
@@ -181,7 +195,7 @@ class KoleksiDokumen extends Model
         if ($unverified->isNotEmpty()) {
             return [
                 'role' => 'Karyawan',
-                'message' => 'Karyawan perlu memverifikasi dokumen yang belum diverifikasi (' . $unverified->count() . ' dokumen menunggu).',
+                'message' => 'Karyawan perlu memverifikasi dokumen yang belum diverifikasi ('.$unverified->count().' dokumen menunggu).',
             ];
         }
 

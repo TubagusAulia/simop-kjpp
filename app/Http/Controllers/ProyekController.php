@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\Proyek;
 use App\Models\AlokasiProyek;
+use App\Models\Proyek;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ProyekController extends Controller
@@ -27,19 +27,19 @@ class ProyekController extends Controller
         $user = auth()->user();
 
         // Non-admin can only view projects they're assigned to
-        $isAssigned = \App\Models\AlokasiProyek::where('proyek_id', $proyek->id)
+        $isAssigned = AlokasiProyek::where('proyek_id', $proyek->id)
             ->where('user_id', $user->id)
             ->exists();
 
-        if (!$user->isAdmin() && !$isAssigned) {
+        if (! $user->isAdmin() && ! $isAssigned) {
             abort(403, "Anda tidak memiliki akses ke proyek #{$proyek->id}. Silakan hubungi Administrator.");
         }
 
         // Robustness: Ensure properti exists
-        if (!$proyek->properti) {
+        if (! $proyek->properti) {
             $proyek->properti()->create([
                 'nama_properti' => $proyek->nama_proyek,
-                'tipe_properti' => 'tanah_kosong' // Default fallback
+                'tipe_properti' => 'tanah_kosong', // Default fallback
             ]);
             $proyek->load('properti');
         }
@@ -54,17 +54,18 @@ class ProyekController extends Controller
 
     public function create()
     {
-        if (!auth()->user()->isAdmin()) {
+        if (! auth()->user()->isAdmin()) {
             abort(403);
         }
 
         $users = User::whereIn('role', ['karyawan', 'client', 'mitra'])->get();
+
         return view('proyek.create', compact('users'));
     }
 
     public function store(Request $request)
     {
-        if (!auth()->user()->isAdmin()) {
+        if (! auth()->user()->isAdmin()) {
             abort(403);
         }
 
@@ -113,10 +114,12 @@ class ProyekController extends Controller
 
     public function requestFinish(Proyek $proyek)
     {
-        if (!auth()->user()->isKaryawan()) abort(403);
+        if (! auth()->user()->isKaryawan()) {
+            abort(403);
+        }
 
         // Verify penilaian exists
-        if (!$proyek->properti?->nilai) {
+        if (! $proyek->properti?->nilai) {
             return back()->with('warning', 'Penilaian harus diisi terlebih dahulu.');
         }
 
@@ -131,9 +134,11 @@ class ProyekController extends Controller
 
     public function acceptFinish(Proyek $proyek)
     {
-        if (!auth()->user()->isAdmin()) abort(403);
+        if (! auth()->user()->isAdmin()) {
+            abort(403);
+        }
 
-        if (!$proyek->finish_requested) {
+        if (! $proyek->finish_requested) {
             return back()->with('warning', 'Belum ada permintaan penyelesaian.');
         }
 
@@ -150,10 +155,12 @@ class ProyekController extends Controller
      */
     public function selesaiVerifikasiDokumen(Proyek $proyek)
     {
-        if (!auth()->user()->isKaryawan()) abort(403);
+        if (! auth()->user()->isKaryawan()) {
+            abort(403);
+        }
 
         $koleksi = $proyek->properti?->koleksiDokumen;
-        if (!$koleksi) {
+        if (! $koleksi) {
             return back()->with('warning', 'Koleksi dokumen tidak ditemukan.');
         }
 
@@ -169,10 +176,12 @@ class ProyekController extends Controller
      */
     public function selesaiVerifikasiFisik(Proyek $proyek)
     {
-        if (!auth()->user()->isKaryawan()) abort(403);
+        if (! auth()->user()->isKaryawan()) {
+            abort(403);
+        }
 
         $koleksi = $proyek->properti?->koleksiFisik;
-        if (!$koleksi) {
+        if (! $koleksi) {
             return back()->with('warning', 'Koleksi fisik tidak ditemukan.');
         }
 
@@ -188,14 +197,16 @@ class ProyekController extends Controller
      */
     public function selesaiPenilaian(Proyek $proyek)
     {
-        if (!auth()->user()->isKaryawan()) abort(403);
+        if (! auth()->user()->isKaryawan()) {
+            abort(403);
+        }
 
         $koleksi = $proyek->properti?->koleksiNilai;
-        if (!$koleksi) {
+        if (! $koleksi) {
             return back()->with('warning', 'Koleksi nilai tidak ditemukan.');
         }
 
-        if (!$koleksi->hasNilai()) {
+        if (! $koleksi->hasNilai()) {
             return back()->with('warning', 'Penilaian harus diisi terlebih dahulu.');
         }
 

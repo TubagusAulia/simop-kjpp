@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class KoleksiNilai extends Model
 {
@@ -57,7 +57,10 @@ class KoleksiNilai extends Model
      */
     public function getProgression(): int
     {
-        if ($this->status === 'selesai') return 100;
+        if ($this->status === 'selesai') {
+            return 100;
+        }
+
         return $this->hasNilai() ? 50 : 0;
     }
 
@@ -67,9 +70,11 @@ class KoleksiNilai extends Model
      */
     public function getTask(): ?array
     {
-        if ($this->status === 'selesai') return null;
+        if ($this->status === 'selesai') {
+            return null;
+        }
 
-        if (!$this->hasNilai()) {
+        if (! $this->hasNilai()) {
             return [
                 'role' => 'Karyawan',
                 'message' => 'Karyawan perlu melakukan penilaian properti (mengisi nilai dan catatan).',

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Proyek;
-use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -29,9 +28,13 @@ class DashboardController extends Controller
 
         foreach ($unfinishedProyeks as $proyek) {
             $phase = $this->getActualPhase($proyek);
-            if ($phase === 'dokumen') $phaseDokumen++;
-            elseif ($phase === 'fisik') $phaseFisik++;
-            elseif ($phase === 'nilai') $phasePenilaian++;
+            if ($phase === 'dokumen') {
+                $phaseDokumen++;
+            } elseif ($phase === 'fisik') {
+                $phaseFisik++;
+            } elseif ($phase === 'nilai') {
+                $phasePenilaian++;
+            }
         }
 
         $pieData = [
@@ -69,6 +72,7 @@ class DashboardController extends Controller
             ->values()
             ->map(function ($proyek) {
                 $actualPhase = $this->getActualPhase($proyek);
+
                 return [
                     'id' => $proyek->id,
                     'nama_proyek' => $proyek->nama_proyek,
@@ -92,17 +96,19 @@ class DashboardController extends Controller
     private function getActualPhase(Proyek $proyek): string
     {
         $properti = $proyek->properti;
-        if (!$properti) return 'dokumen';
+        if (! $properti) {
+            return 'dokumen';
+        }
 
         // Check koleksi_dokumen
         $koleksiDokumen = $properti->koleksiDokumen;
-        if (!$koleksiDokumen || $koleksiDokumen->status !== 'selesai') {
+        if (! $koleksiDokumen || $koleksiDokumen->status !== 'selesai') {
             return 'dokumen';
         }
 
         // Check koleksi_fisik
         $koleksiFisik = $properti->koleksiFisik;
-        if (!$koleksiFisik || $koleksiFisik->status !== 'selesai') {
+        if (! $koleksiFisik || $koleksiFisik->status !== 'selesai') {
             return 'fisik';
         }
 

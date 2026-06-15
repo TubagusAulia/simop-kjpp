@@ -1,15 +1,17 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\AspekFisikController;
+use App\Http\Controllers\ChecklistFisikController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DokumenPropertiController;
+use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NilaiController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PropertiController;
 use App\Http\Controllers\ProyekController;
-use App\Http\Controllers\Client\ProjectController;
-use App\Http\Controllers\ProjectDocumentController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\MessageController;
-use App\Http\Controllers\SurveyController;
+use App\Models\Proyek;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return redirect('/login');
@@ -33,25 +35,25 @@ Route::middleware('auth')->group(function () {
     Route::post('/proyek/{proyek}/selesai-penilaian', [ProyekController::class, 'selesaiPenilaian'])->name('proyek.selesai-penilaian');
 
     // ===== PROPERTI (Management) =====
-    Route::post('/properti/{properti}/update-type', [\App\Http\Controllers\PropertiController::class, 'updateType'])->name('properti.updateType');
-    Route::post('/properti/{properti}/nilai', [\App\Http\Controllers\NilaiController::class, 'store'])->name('properti.nilai.save');
-    Route::delete('/nilai/{nilai}', [\App\Http\Controllers\NilaiController::class, 'destroy'])->name('properti.nilai.destroy');
-    
+    Route::post('/properti/{properti}/update-type', [PropertiController::class, 'updateType'])->name('properti.updateType');
+    Route::post('/properti/{properti}/nilai', [NilaiController::class, 'store'])->name('properti.nilai.save');
+    Route::delete('/nilai/{nilai}', [NilaiController::class, 'destroy'])->name('properti.nilai.destroy');
+
     // Dokumen Properti
-    Route::post('/properti/{properti}/dokumen', [\App\Http\Controllers\DokumenPropertiController::class, 'store'])->name('dokumen.store');
-    Route::put('/dokumen/{dokumen}', [\App\Http\Controllers\DokumenPropertiController::class, 'update'])->name('dokumen.update');
-    Route::post('/dokumen/{dokumen}/verifikasi', [\App\Http\Controllers\DokumenPropertiController::class, 'verifikasi'])->name('dokumen.verifikasi');
-    Route::delete('/dokumen/{dokumen}', [\App\Http\Controllers\DokumenPropertiController::class, 'destroy'])->name('dokumen.destroy');
+    Route::post('/properti/{properti}/dokumen', [DokumenPropertiController::class, 'store'])->name('dokumen.store');
+    Route::put('/dokumen/{dokumen}', [DokumenPropertiController::class, 'update'])->name('dokumen.update');
+    Route::post('/dokumen/{dokumen}/verifikasi', [DokumenPropertiController::class, 'verifikasi'])->name('dokumen.verifikasi');
+    Route::delete('/dokumen/{dokumen}', [DokumenPropertiController::class, 'destroy'])->name('dokumen.destroy');
 
     // Checklist Fisik
-    Route::post('/properti/{properti}/checklist-fisik', [\App\Http\Controllers\ChecklistFisikController::class, 'store'])->name('checklist-fisik.store');
-    Route::delete('/checklist-fisik/{checklistFisik}', [\App\Http\Controllers\ChecklistFisikController::class, 'destroy'])->name('checklist-fisik.destroy');
+    Route::post('/properti/{properti}/checklist-fisik', [ChecklistFisikController::class, 'store'])->name('checklist-fisik.store');
+    Route::delete('/checklist-fisik/{checklistFisik}', [ChecklistFisikController::class, 'destroy'])->name('checklist-fisik.destroy');
 
     // Aspek Fisik Properti
-    Route::post('/properti/{properti}/aspek-fisik', [\App\Http\Controllers\AspekFisikController::class, 'store'])->name('aspek-fisik.store');
-    Route::put('/aspek-fisik/{aspekFisik}', [\App\Http\Controllers\AspekFisikController::class, 'update'])->name('aspek-fisik.update');
-    Route::post('/aspek-fisik/{aspekFisik}/verifikasi', [\App\Http\Controllers\AspekFisikController::class, 'verify'])->name('aspek-fisik.verifikasi');
-    Route::delete('/aspek-fisik/{aspekFisik}', [\App\Http\Controllers\AspekFisikController::class, 'destroy'])->name('aspek-fisik.destroy');
+    Route::post('/properti/{properti}/aspek-fisik', [AspekFisikController::class, 'store'])->name('aspek-fisik.store');
+    Route::put('/aspek-fisik/{aspekFisik}', [AspekFisikController::class, 'update'])->name('aspek-fisik.update');
+    Route::post('/aspek-fisik/{aspekFisik}/verifikasi', [AspekFisikController::class, 'verify'])->name('aspek-fisik.verifikasi');
+    Route::delete('/aspek-fisik/{aspekFisik}', [AspekFisikController::class, 'destroy'])->name('aspek-fisik.destroy');
 
     // Chat (polling-based, no Livewire)
     Route::get('/chats', [MessageController::class, 'index'])->name('chats.index');
@@ -64,7 +66,8 @@ Route::middleware('auth')->group(function () {
 
     // Survey / Mitra
     Route::get('/survey/{project_id?}', function ($project_id = null) {
-        $project = \App\Models\Proyek::find($project_id);
+        $project = Proyek::find($project_id);
+
         return view('dashboards.mitra.index', compact('project'));
     })->name('survey.index');
 
@@ -96,4 +99,4 @@ Route::prefix('laporan')->middleware('auth')->group(function () {
     Route::get('/tahunan/download-zip/{year}', [PropertiController::class, 'downloadZipTahunan'])->name('laporan.tahunan.zip');
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

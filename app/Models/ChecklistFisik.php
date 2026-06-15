@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class ChecklistFisik extends Model
 {
@@ -40,6 +40,7 @@ class ChecklistFisik extends Model
     public function verificationStatus(): string
     {
         $latest = $this->aspekFisiks()->latest()->first();
+
         return $latest ? $latest->status : 'belum';
     }
 }

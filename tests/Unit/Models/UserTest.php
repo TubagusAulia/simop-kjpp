@@ -4,6 +4,7 @@ namespace Tests\Unit\Models;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class UserTest extends TestCase
@@ -12,7 +13,7 @@ class UserTest extends TestCase
 
     public function test_user_has_correct_fillable_attributes(): void
     {
-        $user = new User();
+        $user = new User;
 
         $this->assertEquals([
             'name',
@@ -28,7 +29,7 @@ class UserTest extends TestCase
         $user = User::factory()->create(['password' => 'secret123']);
 
         $this->assertNotEquals('secret123', $user->password);
-        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('secret123', $user->password));
+        $this->assertTrue(Hash::check('secret123', $user->password));
     }
 
     public function test_user_has_hidden_password_and_remember_token(): void

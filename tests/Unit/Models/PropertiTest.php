@@ -16,7 +16,7 @@ class PropertiTest extends TestCase
 
     public function test_properti_has_correct_fillable_attributes(): void
     {
-        $properti = new Properti();
+        $properti = new Properti;
 
         $this->assertEquals([
             'proyek_id',

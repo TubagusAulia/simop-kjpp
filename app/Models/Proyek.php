@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Proyek extends Model
 {
@@ -86,7 +86,9 @@ class Proyek extends Model
     public function getCurrentCollection()
     {
         $properti = $this->properti;
-        if (!$properti) return null;
+        if (! $properti) {
+            return null;
+        }
 
         $phase = $this->current_phase ?? 'dokumen';
 
@@ -107,10 +109,14 @@ class Proyek extends Model
         $phase = $this->current_phase ?? 'dokumen';
 
         // Project complete — no task
-        if ($phase === 'selesai') return null;
+        if ($phase === 'selesai') {
+            return null;
+        }
 
         $collection = $this->getCurrentCollection();
-        if (!$collection) return null;
+        if (! $collection) {
+            return null;
+        }
 
         return $collection->getTask();
     }

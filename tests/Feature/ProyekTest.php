@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\AlokasiProyek;
 use App\Models\Proyek;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class ProyekTest extends TestCase
@@ -33,7 +35,7 @@ class ProyekTest extends TestCase
             'due_date' => '2026-12-31',
             'tipe_properti' => 'tanah_bangunan',
             'user_ids' => [$karyawan->id],
-            'kontrak_file' => \Illuminate\Http\UploadedFile::fake()->create('kontrak.pdf', 100, 'application/pdf'),
+            'kontrak_file' => UploadedFile::fake()->create('kontrak.pdf', 100, 'application/pdf'),
         ]);
 
         $response->assertStatus(302);
@@ -65,7 +67,7 @@ class ProyekTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $karyawan = User::factory()->create(['role' => 'karyawan']);
         $proyek = Proyek::factory()->create(['created_by' => $admin->id]);
-        \App\Models\AlokasiProyek::create([
+        AlokasiProyek::create([
             'proyek_id' => $proyek->id,
             'user_id' => $karyawan->id,
             'allocated_by' => $admin->id,

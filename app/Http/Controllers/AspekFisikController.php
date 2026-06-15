@@ -96,7 +96,7 @@ class AspekFisikController extends Controller
      */
     public function verify(Request $request, AspekFisik $aspekFisik)
     {
-        if (!auth()->user()->isKaryawan()) {
+        if (! auth()->user()->isKaryawan()) {
             abort(403, 'Hanya Karyawan yang dapat memverifikasi aspek fisik.');
         }
 
@@ -115,6 +115,7 @@ class AspekFisikController extends Controller
         if ($request->expectsJson() || $request->header('X-Requested-With')) {
             return response()->json(['success' => true, 'message' => 'Status aspek fisik berhasil diperbarui.']);
         }
+
         return back()->with('success', 'Status aspek fisik berhasil diperbarui.');
     }
 
@@ -123,7 +124,7 @@ class AspekFisikController extends Controller
      */
     public function destroy(AspekFisik $aspekFisik)
     {
-        if (!auth()->user()->isKaryawan()) {
+        if (! auth()->user()->isKaryawan()) {
             abort(403, 'Hanya Karyawan yang dapat menghapus aspek fisik.');
         }
 

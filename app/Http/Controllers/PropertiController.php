@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Properti;
 use App\Models\Proyek;
+use App\Services\DocumentRequirementService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
@@ -12,7 +13,7 @@ class PropertiController extends Controller
     public function updateType(Request $request, Properti $properti)
     {
         // Only Admin can change property type
-        if (!auth()->user()->isAdmin()) {
+        if (! auth()->user()->isAdmin()) {
             abort(403, 'Hanya Admin yang dapat mengubah tipe properti.');
         }
 
@@ -40,6 +41,7 @@ class PropertiController extends Controller
 
         $proyekData = $laporanProyeks->map(function ($proyek) {
             $client = $proyek->clients->first();
+
             return [
                 'id' => $proyek->id,
                 'proyek' => $proyek,
@@ -73,7 +75,7 @@ class PropertiController extends Controller
      */
     public function laporanProyekShow(Proyek $proyek)
     {
-        if (!auth()->user()->isKaryawan() && !auth()->user()->isAdmin()) {
+        if (! auth()->user()->isKaryawan() && ! auth()->user()->isAdmin()) {
             abort(403);
         }
 
@@ -95,7 +97,7 @@ class PropertiController extends Controller
      */
     public function downloadPdf(Proyek $proyek)
     {
-        if (!auth()->user()->isKaryawan() && !auth()->user()->isAdmin()) {
+        if (! auth()->user()->isKaryawan() && ! auth()->user()->isAdmin()) {
             abort(403);
         }
 
@@ -113,38 +115,46 @@ class PropertiController extends Controller
             'creator',
         ]);
 
-        $typeReqs = \App\Services\DocumentRequirementService::getTypeRequirements($proyek->properti->tipe_properti);
+        $typeReqs = DocumentRequirementService::getTypeRequirements($proyek->properti->tipe_properti);
 
         // Build type labels for dokumen
-        $globalReqs = \App\Services\DocumentRequirementService::getGlobalRequirements();
+        $globalReqs = DocumentRequirementService::getGlobalRequirements();
         $typeLabels = [];
-        foreach ($globalReqs as $k => $v) { $typeLabels[$k] = $v; }
-        if (isset($typeReqs['mandatory'])) {
-            foreach ($typeReqs['mandatory'] as $k => $v) { $typeLabels[$k] = $v; }
+        foreach ($globalReqs as $k => $v) {
+            $typeLabels[$k] = $v;
         }
-        $globalOptional = \App\Services\DocumentRequirementService::getGlobalOptionalRequirements();
-        foreach ($globalOptional as $k => $v) { $typeLabels[$k] = $v; }
+        if (isset($typeReqs['mandatory'])) {
+            foreach ($typeReqs['mandatory'] as $k => $v) {
+                $typeLabels[$k] = $v;
+            }
+        }
+        $globalOptional = DocumentRequirementService::getGlobalOptionalRequirements();
+        foreach ($globalOptional as $k => $v) {
+            $typeLabels[$k] = $v;
+        }
         if (isset($typeReqs['optional'])) {
-            foreach ($typeReqs['optional'] as $k => $v) { $typeLabels[$k] = $v; }
+            foreach ($typeReqs['optional'] as $k => $v) {
+                $typeLabels[$k] = $v;
+            }
         }
 
         $karyawans = $proyek->users->where('role', 'karyawan');
-        $clients   = $proyek->users->where('role', 'client');
-        $mitras    = $proyek->users->where('role', 'mitra');
+        $clients = $proyek->users->where('role', 'client');
+        $mitras = $proyek->users->where('role', 'mitra');
 
         $pdf = Pdf::loadView('laporan.pdf', [
-            'proyek'     => $proyek,
-            'nilai'      => $proyek->properti?->nilai,
-            'dokumens'   => $proyek->properti?->dokumens ?? collect(),
-            'aspeks'     => $proyek->properti?->aspekFisiks ?? collect(),
+            'proyek' => $proyek,
+            'nilai' => $proyek->properti?->nilai,
+            'dokumens' => $proyek->properti?->dokumens ?? collect(),
+            'aspeks' => $proyek->properti?->aspekFisiks ?? collect(),
             'typeLabels' => $typeLabels,
-            'typeReqs'   => $typeReqs,
-            'karyawans'  => $karyawans,
-            'clients'    => $clients,
-            'mitras'     => $mitras,
+            'typeReqs' => $typeReqs,
+            'karyawans' => $karyawans,
+            'clients' => $clients,
+            'mitras' => $mitras,
         ])->setPaper('a4', 'portrait');
 
-        $filename = 'Laporan-' . str_replace('/', '-', $proyek->nama_proyek) . '.pdf';
+        $filename = 'Laporan-'.str_replace('/', '-', $proyek->nama_proyek).'.pdf';
 
         return $pdf->download($filename);
     }
@@ -158,6 +168,7 @@ class PropertiController extends Controller
     public function getProject($id)
     {
         $proyek = Proyek::with(['properti.nilai', 'clients'])->findOrFail($id);
+
         return response()->json([
             'id' => $proyek->id,
             'nama_proyek' => $proyek->nama_proyek,
@@ -167,8 +178,16 @@ class PropertiController extends Controller
         ]);
     }
 
-    public function uploadLaporan(Request $request) { return response()->json(['success' => true]); }
-    public function resetLaporan($id) { return response()->json(['success' => true]); }
+    public function uploadLaporan(Request $request)
+    {
+        return response()->json(['success' => true]);
+    }
+
+    public function resetLaporan($id)
+    {
+        return response()->json(['success' => true]);
+    }
+
     public function getTahunanByYear($year)
     {
         $proyeks = Proyek::whereHas('properti.nilai')
@@ -182,16 +201,21 @@ class PropertiController extends Controller
                     'nilai' => $p->properti?->nilai?->nilai,
                 ];
             });
+
         return response()->json($proyeks);
     }
-    public function deleteProject($id) { return response()->json(['success' => true]); }
+
+    public function deleteProject($id)
+    {
+        return response()->json(['success' => true]);
+    }
 
     /**
      * Generate and download a cumulative PDF report for all projects in a specific year.
      */
     public function downloadTahunanPdf($year)
     {
-        if (!auth()->user()->isKaryawan() && !auth()->user()->isAdmin()) {
+        if (! auth()->user()->isKaryawan() && ! auth()->user()->isAdmin()) {
             abort(403);
         }
 
@@ -216,14 +240,17 @@ class PropertiController extends Controller
 
         // We'll reuse the logic for type labels if needed, but since it's cumulative,
         // we might just show basic info per project.
-        
+
         $pdf = Pdf::loadView('laporan.pdf_tahunan', [
-            'year'    => $year,
+            'year' => $year,
             'proyeks' => $proyeks,
         ])->setPaper('a4', 'portrait');
 
         return $pdf->download("Laporan-Tahunan-$year.pdf");
     }
 
-    public function downloadZipTahunan($year) { return response()->json(['success' => true]); }
+    public function downloadZipTahunan($year)
+    {
+        return response()->json(['success' => true]);
+    }
 }

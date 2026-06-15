@@ -2,24 +2,25 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use App\Models\Proyek;
 use App\Models\AlokasiProyek;
-use App\Models\Properti;
-use App\Models\DokumenProperti;
-use App\Models\ChecklistFisik;
 use App\Models\AspekFisik;
-use App\Models\Nilai;
+use App\Models\ChecklistFisik;
+use App\Models\DokumenProperti;
 use App\Models\KoleksiDokumen;
 use App\Models\KoleksiFisik;
 use App\Models\KoleksiNilai;
+use App\Models\Nilai;
+use App\Models\Properti;
+use App\Models\Proyek;
+use App\Models\User;
+use App\Services\DocumentRequirementService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 // Manually require FPDF if not auto-loaded
-if (!class_exists('FPDF')) {
+if (! class_exists('FPDF')) {
     $fpdfPath = base_path('vendor/setasign/fpdf/fpdf.php');
     if (file_exists($fpdfPath)) {
         require_once $fpdfPath;
@@ -42,7 +43,7 @@ class UserSeeder extends Seeder
             DB::connection()->getPdo()->exec("DELETE FROM \"{$table}\"");
         }
         // Reset autoincrement counters
-        DB::connection()->getPdo()->exec("DELETE FROM sqlite_sequence WHERE name IN ('" . implode("','", $tables) . "')");
+        DB::connection()->getPdo()->exec("DELETE FROM sqlite_sequence WHERE name IN ('".implode("','", $tables)."')");
         DB::connection()->getPdo()->exec('PRAGMA foreign_keys = ON');
 
         Storage::disk('public')->deleteDirectory('kontrak');
@@ -55,11 +56,11 @@ class UserSeeder extends Seeder
         // ── 0b. Ensure storage symlink exists ──
         $linkPath = public_path('storage');
         $targetPath = storage_path('app/public');
-        if (!file_exists($linkPath) && !is_link($linkPath)) {
+        if (! file_exists($linkPath) && ! is_link($linkPath)) {
             $created = @symlink($targetPath, $linkPath);
-            if (!$created) {
+            if (! $created) {
                 // Fallback: try exec (Windows may need elevated perms for symlink)
-                @exec("mklink /D " . escapeshellarg($linkPath) . " " . escapeshellarg($targetPath) . " 2>&1");
+                @exec('mklink /D '.escapeshellarg($linkPath).' '.escapeshellarg($targetPath).' 2>&1');
             }
         }
 
@@ -98,6 +99,7 @@ class UserSeeder extends Seeder
                 'role' => $u['role'],
             ]);
         }
+
         return $created;
     }
 
@@ -318,7 +320,7 @@ class UserSeeder extends Seeder
     private function getOrCreateProperti($proyek, $tipe)
     {
         $properti = Properti::where('proyek_id', $proyek->id)->first();
-        if (!$properti) {
+        if (! $properti) {
             $properti = $proyek->properti()->create([
                 'nama_properti' => $proyek->nama_proyek,
                 'tipe_properti' => $tipe,
@@ -327,20 +329,21 @@ class UserSeeder extends Seeder
             $properti->update(['tipe_properti' => $tipe]);
         }
         // Create koleksi if they don't exist
-        if (!$properti->koleksiDokumen) {
-            $globalReqs = \App\Services\DocumentRequirementService::getGlobalRequirements();
-            $typeReqs = \App\Services\DocumentRequirementService::getTypeRequirements($tipe);
+        if (! $properti->koleksiDokumen) {
+            $globalReqs = DocumentRequirementService::getGlobalRequirements();
+            $typeReqs = DocumentRequirementService::getTypeRequirements($tipe);
             $wajibKeys = ($typeReqs)
                 ? array_merge(array_keys($globalReqs), array_keys($typeReqs['mandatory'] ?? []))
                 : array_keys($globalReqs);
             KoleksiDokumen::create(['properti_id' => $properti->id, 'wajib_list' => $wajibKeys]);
         }
-        if (!$properti->koleksiFisik) {
+        if (! $properti->koleksiFisik) {
             KoleksiFisik::create(['properti_id' => $properti->id]);
         }
-        if (!$properti->koleksiNilai) {
+        if (! $properti->koleksiNilai) {
             KoleksiNilai::create(['properti_id' => $properti->id]);
         }
+
         return $properti;
     }
 
@@ -367,7 +370,9 @@ class UserSeeder extends Seeder
     private function assign($proyek, $users)
     {
         foreach ($users as $u) {
-            if ($u->role === 'admin') continue;
+            if ($u->role === 'admin') {
+                continue;
+            }
             AlokasiProyek::firstOrCreate([
                 'proyek_id' => $proyek->id,
                 'user_id' => $u->id,
@@ -457,21 +462,22 @@ class UserSeeder extends Seeder
 
     private function genPlaceholderFoto()
     {
-        $filename = 'aspek-fisik/placeholder_' . uniqid() . '.jpg';
+        $filename = 'aspek-fisik/placeholder_'.uniqid().'.jpg';
         // Minimal valid JPEG (1x1 pixel, gray) — base64 encoded
         $minimalJpeg = base64_decode(
             '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AKwA//9k='
         );
         Storage::disk('public')->put($filename, $minimalJpeg);
+
         return $filename;
     }
 
     private function genPdf($type, $projectName, $folder)
     {
         $safeType = preg_replace('/[^a-z0-9_\-]/', '_', strtolower($type));
-        $filename = "{$folder}/" . $safeType . "_" . uniqid() . ".pdf";
+        $filename = "{$folder}/".$safeType.'_'.uniqid().'.pdf';
 
-        $pdf = new \FPDF();
+        $pdf = new \FPDF;
         $pdf->AddPage();
         $pdf->SetFont('Arial', 'B', 20);
         $pdf->SetTextColor(130, 193, 125); // #82C17D

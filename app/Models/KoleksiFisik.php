@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class KoleksiFisik extends Model
 {
@@ -67,7 +67,7 @@ class KoleksiFisik extends Model
      */
     public function hasWajibList(): bool
     {
-        return !empty($this->wajib_list);
+        return ! empty($this->wajib_list);
     }
 
     /**
@@ -76,17 +76,22 @@ class KoleksiFisik extends Model
     public function isWajibFulfilled(): bool
     {
         $wajibItems = $this->getWajibItems();
-        if (empty($wajibItems)) return true;
+        if (empty($wajibItems)) {
+            return true;
+        }
 
         // Wajib items are tracked via checklist_fisik table
         $checklistItems = $this->properti->checklistFisiks;
-        if ($checklistItems->isEmpty()) return false;
+        if ($checklistItems->isEmpty()) {
+            return false;
+        }
 
         foreach ($checklistItems as $item) {
             if ($item->verificationStatus() === 'belum') {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -96,9 +101,11 @@ class KoleksiFisik extends Model
     public function isAllVerified(): bool
     {
         $allAspeks = $this->properti->aspekFisiks;
-        if ($allAspeks->isEmpty()) return true;
+        if ($allAspeks->isEmpty()) {
+            return true;
+        }
 
-        return $allAspeks->every(fn($a) => $a->status === 'terverifikasi');
+        return $allAspeks->every(fn ($a) => $a->status === 'terverifikasi');
     }
 
     /**
@@ -107,9 +114,11 @@ class KoleksiFisik extends Model
     public function getWajibFulfilledCount(): int
     {
         $checklistItems = $this->properti->checklistFisiks;
-        if ($checklistItems->isEmpty()) return 0;
+        if ($checklistItems->isEmpty()) {
+            return 0;
+        }
 
-        return $checklistItems->filter(fn($c) => $c->verificationStatus() !== 'belum')->count();
+        return $checklistItems->filter(fn ($c) => $c->verificationStatus() !== 'belum')->count();
     }
 
     /**
@@ -142,7 +151,10 @@ class KoleksiFisik extends Model
     public function hasMitra(): bool
     {
         $properti = $this->properti;
-        if (!$properti || !$properti->proyek) return false;
+        if (! $properti || ! $properti->proyek) {
+            return false;
+        }
+
         return $properti->proyek->mitras()->exists();
     }
 
@@ -151,9 +163,10 @@ class KoleksiFisik extends Model
      * Note: This returns the Proyek model instance, not a query builder.
      * Use hasMitra() for query-based checks.
      */
-    public function proyek(): ?\App\Models\Proyek
+    public function proyek(): ?Proyek
     {
         $properti = $this->properti;
+
         return $properti ? $properti->proyek : null;
     }
 
@@ -168,7 +181,9 @@ class KoleksiFisik extends Model
         $verifiedAspeks = $this->getVerifiedCount();
 
         // No wajib list yet
-        if ($totalWajib === 0) return 0;
+        if ($totalWajib === 0) {
+            return 0;
+        }
 
         // Phase 1: fulfilling wajib (0-50%)
         $fulfillProgress = 0;
@@ -190,7 +205,9 @@ class KoleksiFisik extends Model
      */
     public function getTask(): ?array
     {
-        if ($this->status === 'selesai') return null;
+        if ($this->status === 'selesai') {
+            return null;
+        }
 
         $wajibItems = $this->getWajibItems();
 
@@ -205,12 +222,13 @@ class KoleksiFisik extends Model
         // Check wajib fulfillment
         $checklistItems = $this->properti->checklistFisiks;
         if ($checklistItems->isNotEmpty()) {
-            $unfilled = $checklistItems->filter(fn($c) => $c->verificationStatus() === 'belum');
+            $unfilled = $checklistItems->filter(fn ($c) => $c->verificationStatus() === 'belum');
             if ($unfilled->isNotEmpty()) {
                 $mitraRole = $this->hasMitra() ? 'Karyawan / Mitra' : 'Karyawan';
+
                 return [
                     'role' => $mitraRole,
-                    'message' => $mitraRole . ' perlu menambahkan aspek fisik untuk item wajib yang belum terisi (' . $unfilled->count() . ' item belum terisi).',
+                    'message' => $mitraRole.' perlu menambahkan aspek fisik untuk item wajib yang belum terisi ('.$unfilled->count().' item belum terisi).',
                 ];
             }
         }
@@ -221,7 +239,7 @@ class KoleksiFisik extends Model
         if ($pendingAspeks->isNotEmpty()) {
             return [
                 'role' => 'Karyawan',
-                'message' => 'Karyawan perlu memverifikasi aspek fisik yang belum diverifikasi (' . $pendingAspeks->count() . ' aspek menunggu).',
+                'message' => 'Karyawan perlu memverifikasi aspek fisik yang belum diverifikasi ('.$pendingAspeks->count().' aspek menunggu).',
             ];
         }
 

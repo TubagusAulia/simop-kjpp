@@ -13,7 +13,7 @@ class ProyekTest extends TestCase
 
     public function test_proyek_has_correct_fillable_attributes(): void
     {
-        $proyek = new Proyek();
+        $proyek = new Proyek;
 
         $this->assertEquals([
             'nama_proyek',
@@ -32,7 +32,7 @@ class ProyekTest extends TestCase
 
     public function test_proyek_has_correct_casts(): void
     {
-        $proyek = new Proyek();
+        $proyek = new Proyek;
 
         $casts = $proyek->getCasts();
 
