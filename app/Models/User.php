@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
@@ -13,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  * @property string $role
  * @property string|null $profile_photo
  * @property-read string $profile_photo_url
- * @property-read \Illuminate\Database\Eloquent\Collection $proyeks
+ * @property-read Collection $proyeks
  */
 class User extends Authenticatable
 {

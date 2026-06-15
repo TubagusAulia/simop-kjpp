@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -11,13 +12,13 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $tipe_properti
  * @property string $nama_properti
  * @property-read Proyek $proyek
- * @property-read \Illuminate\Database\Eloquent\Collection $dokumens
- * @property-read \Illuminate\Database\Eloquent\Collection $aspekFisiks
- * @property-read \Illuminate\Database\Eloquent\Collection $checklistFisiks
- * @property-read \App\Models\Nilai|null $nilai
- * @property-read \App\Models\KoleksiDokumen|null $koleksiDokumen
- * @property-read \App\Models\KoleksiFisik|null $koleksiFisik
- * @property-read \App\Models\KoleksiNilai|null $koleksiNilai
+ * @property-read Collection $dokumens
+ * @property-read Collection $aspekFisiks
+ * @property-read Collection $checklistFisiks
+ * @property-read Nilai|null $nilai
+ * @property-read KoleksiDokumen|null $koleksiDokumen
+ * @property-read KoleksiFisik|null $koleksiFisik
+ * @property-read KoleksiNilai|null $koleksiNilai
  */
 class Properti extends Model
 {
