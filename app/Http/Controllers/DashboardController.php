@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Proyek;
-use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -12,14 +11,15 @@ class DashboardController extends Controller
         $user = auth()->user();
         $currentYear = now()->year;
 
-        // Get projects based on role
+        // Get projects based on role (eager load properti + koleksi for pie chart)
+        $query = Proyek::with(['properti.koleksiDokumen', 'properti.koleksiFisik']);
         if ($user->isAdmin()) {
-            $proyeks = Proyek::latest()->get();
+            $proyeks = $query->latest()->get();
         } else {
-            $proyeks = $user->proyeks()->latest()->get();
+            $proyeks = $user->proyeks()->with(['properti.koleksiDokumen', 'properti.koleksiFisik'])->latest()->get();
         }
 
-        // --- Pie Chart: Unfinished projects by phase ---
+        // --- Pie Chart: Unfinished projects by actual progress ---
         $unfinishedProyeks = $proyeks->where('status', '!=', 'selesai');
 
         $phaseDokumen = 0;
@@ -27,10 +27,14 @@ class DashboardController extends Controller
         $phasePenilaian = 0;
 
         foreach ($unfinishedProyeks as $proyek) {
-            $phase = $this->getCurrentPhase($proyek);
-            if ($phase === 'dokumen') $phaseDokumen++;
-            elseif ($phase === 'fisik') $phaseFisik++;
-            elseif ($phase === 'nilai') $phasePenilaian++;
+            $phase = $this->getActualPhase($proyek);
+            if ($phase === 'dokumen') {
+                $phaseDokumen++;
+            } elseif ($phase === 'fisik') {
+                $phaseFisik++;
+            } elseif ($phase === 'nilai') {
+                $phasePenilaian++;
+            }
         }
 
         $pieData = [
@@ -61,27 +65,54 @@ class DashboardController extends Controller
             'data' => $monthlyCompleted,
         ];
 
-        // --- Project list: ordered by due date, with current phase ---
+        // --- Project list: ordered by due date, with actual phase ---
         $projectsByPhase = $proyeks
             ->where('status', '!=', 'selesai')
             ->sortBy('due_date')
             ->values()
             ->map(function ($proyek) {
-                $currentPhase = $this->getCurrentPhase($proyek);
+                $actualPhase = $this->getActualPhase($proyek);
+
                 return [
                     'id' => $proyek->id,
                     'nama_proyek' => $proyek->nama_proyek,
                     'status' => $proyek->status,
                     'due_date' => $proyek->due_date,
-                    'current_phase' => $currentPhase,
+                    'current_phase' => $actualPhase,
                 ];
             });
 
         return view('dashboards.index', compact('proyeks', 'pieData', 'barData', 'projectsByPhase', 'currentYear'));
     }
 
-    private function getCurrentPhase(Proyek $proyek): string
+    /**
+     * Determine the active phase of a project based on actual progress,
+     * not just the current_phase database column.
+     *
+     * - dokumen: documents not yet all verified (koleksi_dokumen not selesai)
+     * - fisik:   all docs verified, but aspek fisik not all verified (koleksi_fisik not selesai)
+     * - nilai:   all aspek verified, waiting for penilaian to be completed
+     */
+    private function getActualPhase(Proyek $proyek): string
     {
-        return $proyek->current_phase ?? 'dimulai';
+        $properti = $proyek->properti;
+        if (! $properti) {
+            return 'dokumen';
+        }
+
+        // Check koleksi_dokumen
+        $koleksiDokumen = $properti->koleksiDokumen;
+        if (! $koleksiDokumen || $koleksiDokumen->status !== 'selesai') {
+            return 'dokumen';
+        }
+
+        // Check koleksi_fisik
+        $koleksiFisik = $properti->koleksiFisik;
+        if (! $koleksiFisik || $koleksiFisik->status !== 'selesai') {
+            return 'fisik';
+        }
+
+        // All previous phases complete — project is in penilaian
+        return 'nilai';
     }
 }

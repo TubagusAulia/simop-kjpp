@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\SurveyElement;
 use App\Models\Project;
+use App\Models\SurveyElement;
+use Illuminate\Http\Request;
 
 class SurveyController extends Controller
 {
     public function getElements(Project $project)
     {
         $elements = SurveyElement::where('project_id', $project->id)->get();
+
         return response()->json(['success' => true, 'data' => $elements]);
     }
 
@@ -46,6 +47,7 @@ class SurveyController extends Controller
     {
         $element = SurveyElement::findOrFail($id);
         $element->update(['status' => 'verified']);
+
         return response()->json(['success' => true]);
     }
 }

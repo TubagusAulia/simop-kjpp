@@ -13,7 +13,7 @@ class ChecklistFisikController extends Controller
      */
     public function store(Request $request, Properti $properti)
     {
-        if (!auth()->user()->isKaryawan()) {
+        if (! auth()->user()->isKaryawan()) {
             abort(403, 'Hanya Karyawan yang dapat menambahkan checklist.');
         }
 
@@ -36,7 +36,7 @@ class ChecklistFisikController extends Controller
      */
     public function destroy(ChecklistFisik $checklistFisik)
     {
-        if (!auth()->user()->isKaryawan()) {
+        if (! auth()->user()->isKaryawan()) {
             abort(403, 'Hanya Karyawan yang dapat menghapus checklist.');
         }
 

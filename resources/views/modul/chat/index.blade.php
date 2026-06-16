@@ -1,94 +1,136 @@
 <x-app-layout>
-    <div class="py-6">
+    <div class="py-4">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="flex bg-white shadow rounded-lg overflow-visible" style="height:80vh;">
+            <div class="flex bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100" style="height:85vh;">
 
                 <!-- Left: Users / Search -->
-                <div class="w-1/3 border-r p-4 bg-white shadow-lg" id="chat-left">
-                    <div class="flex items-center mb-4">
-                        <input id="search-input" type="text" placeholder="Pencarian" class="w-full rounded-md border-gray-200 px-3 py-2" oninput="filterUsers(this.value)" />
-                    </div>
-                    <div class="mb-3 flex gap-2">
-                        <button id="filter-all" onclick="setFilter('all')" class="px-3 py-1 rounded-full text-sm bg-green-100 text-green-700">All</button>
-                        <button id="filter-unread" onclick="setFilter('unread')" class="px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">Unread</button>
-                        <button id="filter-important" onclick="setFilter('important')" class="px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">Important</button>
+                <div class="w-1/3 border-r bg-white flex flex-col" id="chat-left">
+                    <!-- Sidebar Header -->
+                    <div class="p-4 bg-gray-50 flex items-center justify-between border-b">
+                        <div class="flex items-center gap-3">
+                            <img src="{{ Auth::user()->profile_photo_url ?? '/images/profile-user.svg' }}" class="h-10 w-10 rounded-full border border-gray-200" />
+                            <div class="font-bold text-gray-700">Pesan Saya</div>
+                        </div>
+                        <div class="flex gap-4 text-gray-500">
+                            <svg class="w-5 h-5 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                        </div>
                     </div>
 
-                    <ul id="chat-users" class="space-y-3 overflow-auto h-[calc(80vh-220px)]">
+                    <!-- Search -->
+                    <div class="p-3">
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            </span>
+                            <input id="search-input" type="text" placeholder="Cari atau mulai chat baru" 
+                                class="w-full bg-gray-100 border-none rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-1 focus:ring-[#82C17D] focus:bg-white transition-all" 
+                                oninput="filterUsers(this.value)" />
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="px-3 pb-2 flex gap-2">
+                        <button onclick="setFilter('all')" class="px-4 py-1.5 rounded-full text-xs font-bold bg-[#82C17D] text-white">Semua</button>
+                        <button onclick="setFilter('unread')" class="px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500 hover:bg-gray-200 transition">Belum Dibaca</button>
+                    </div>
+
+                    <!-- User List -->
+                    <ul id="chat-users" class="flex-1 overflow-y-auto divide-y divide-gray-50">
                         @forelse($users ?? [] as $user)
-                            <li onclick="selectUser({{ $user->id }}, '{{ $user->name }}', '{{ $user->email }}', '{{ $user->profile_photo_url ?? '/images/profile-user.png' }}')"
-                                class="chat-user flex items-center gap-3 p-2 rounded hover:bg-gray-100 cursor-pointer"
+                            <li onclick="selectUser({{ $user->id }}, '{{ $user->name }}', '{{ $user->username }}', '{{ $user->profile_photo_url ?? '/images/profile-user.svg' }}')"
+                                class="chat-user flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                                 data-name="{{ strtolower($user->name) }}"
                                 data-email="{{ strtolower($user->email) }}">
-                                <img src="{{ $user->profile_photo_url ?? '/images/profile-user.png' }}" class="h-10 w-10 rounded-full" />
-                                <div class="flex-1">
-                                    <div class="flex items-center justify-between">
-                                        <div class="font-medium truncate">{{ $user->name }}</div>
-                                        <div class="text-sm text-gray-500 ml-2 truncate max-w-[35%] text-right">{{ $user->email }}</div>
+                                <div class="relative">
+                                    <img src="{{ $user->profile_photo_url ?? '/images/profile-user.svg' }}" class="h-12 w-12 rounded-full object-cover border border-gray-100" />
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <div class="font-bold text-gray-900 truncate">{{ $user->name }}</div>
+                                        <div class="text-[10px] text-gray-400">12:45</div>
+                                    </div>
+                                    <div class="text-xs text-gray-500 truncate flex items-center justify-between">
+                                        <span class="truncate">Klik untuk memulai obrolan...</span>
                                     </div>
                                 </div>
                             </li>
                         @empty
-                            <div class="text-center text-gray-400 mt-10">Tidak ada kontak.</div>
+                            <div class="text-center text-gray-400 mt-10 p-4">Tidak ada kontak ditemukan.</div>
                         @endforelse
                     </ul>
                 </div>
 
                 <!-- Right: Conversation -->
-                <div class="flex-1 p-4 flex flex-col bg-white shadow-lg relative">
-                    <div id="chat-empty" class="flex-1 flex items-center justify-center text-gray-400">
-                        <div class="text-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            <div class="text-lg font-medium">Siapa yang ingin di chat?</div>
-                            <div class="text-sm text-gray-500">Pilih pengguna dari daftar di sebelah kiri untuk memulai percakapan.</div>
+                <div class="flex-1 flex flex-col relative bg-[#efe7dd]" id="chat-right-container">
+                    <!-- WhatsApp Pattern Overlay -->
+                    <div class="absolute inset-0 opacity-[0.06] pointer-events-none" style="background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');"></div>
+
+                    <!-- Empty State -->
+                    <div id="chat-empty" class="flex-1 flex items-center justify-center relative z-10">
+                        <div class="text-center bg-white/80 backdrop-blur-sm p-8 rounded-3xl shadow-sm border border-white">
+                            <div class="w-20 h-20 bg-[#82C17D]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-[#82C17D]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                </svg>
+                            </div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-2">Pilih Obrolan</h3>
+                            <p class="text-gray-500 max-w-xs mx-auto">Mulai percakapan dengan rekan tim, klien, atau mitra Anda.</p>
                         </div>
                     </div>
 
-                    <div id="chat-conversation" class="flex-1 flex flex-col hidden">
-                        <div id="chat-header" class="mb-4">
-                            <div id="chat-top-bar" class="bg-gradient-to-l from-[#7CC576] to-white rounded-lg p-4 flex items-center gap-4 shadow-sm transition-colors duration-200">
-                                <img id="chat-header-avatar" src="" alt="avatar" class="h-14 w-14 rounded-full border-2 border-white object-cover" />
+                    <!-- Active Chat -->
+                    <div id="chat-conversation" class="flex-1 flex flex-col hidden relative z-10 h-full">
+                        <!-- Chat Header -->
+                        <div class="p-3 bg-gray-50 flex items-center justify-between border-b shadow-sm">
+                            <div class="flex items-center gap-3">
+                                <img id="chat-header-avatar" src="" class="h-10 w-10 rounded-full object-cover border border-gray-200" />
                                 <div>
-                                    <h3 id="chat-header-name" class="text-xl font-semibold tracking-wide"></h3>
-                                    <div id="chat-header-sub" class="text-sm text-gray-700"></div>
+                                    <div id="chat-header-name" class="font-bold text-gray-800 leading-tight"></div>
+                                    <div id="chat-header-sub" class="text-[10px] text-gray-400 font-medium truncate max-w-[200px]"></div>
                                 </div>
                             </div>
-                            <div class="border-b border-gray-200 mt-3"></div>
+                            <div class="flex gap-5 text-gray-400">
+                                <svg class="w-5 h-5 cursor-pointer hover:text-[#82C17D]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                <svg class="w-5 h-5 cursor-pointer hover:text-[#82C17D]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                            </div>
                         </div>
 
-                        <div id="messages" class="flex-1 overflow-auto px-2 pb-4">
-                            <!-- Messages loaded via polling -->
+                        <!-- Messages Container -->
+                        <div id="messages" class="flex-1 overflow-y-auto px-6 py-4 space-y-2 scroll-smooth">
+                            <!-- Dynamic Messages -->
                         </div>
 
-                        <div id="message-form-wrap" class="pt-3 border-t mt-3">
-                            <form id="message-form" onsubmit="sendMessage(event)" class="flex gap-2 items-center">
-                                <input id="message-input" type="text" placeholder="Ketik pesan di sini..." class="flex-1 rounded-full border-gray-200 px-4 py-3" autocomplete="off" />
+                        <!-- Chat Input -->
+                        <div class="p-3 bg-gray-50 border-t flex items-center gap-2 relative">
+                            <button class="p-2 text-gray-500 hover:text-[#82C17D] transition" onclick="toggleAttachMenu()">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                            </button>
 
-                                <div class="relative">
-                                    <button type="button" onclick="toggleAttachMenu()" class="ms-2 p-2 text-gray-600 hover:text-green-600 focus:outline-none">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.44 11.05L12.36 20.13a5 5 0 01-7.07-7.07l9.19-9.19a3 3 0 014.24 4.24l-9.19 9.19a1 1 0 01-1.41-1.41l9.19-9.19" />
-                                        </svg>
-                                    </button>
-
-                                    <div id="attachMenu" class="absolute bottom-12 right-0 w-44 bg-white border rounded shadow p-2 z-50 hidden">
-                                        <div class="text-sm text-gray-600 mb-2">Pilih lampiran</div>
-                                        <div class="space-y-1">
-                                            <label class="block px-2 py-1 hover:bg-gray-100 cursor-pointer text-sm">
-                                                Foto & Video
-                                                <input type="file" class="hidden" accept="image/*,video/*" onchange="handleAttachment(this)">
-                                            </label>
-                                            <label class="block px-2 py-1 hover:bg-gray-100 cursor-pointer text-sm">
-                                                Dokumen
-                                                <input type="file" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip" onchange="handleAttachment(this)">
-                                            </label>
-                                        </div>
+                            <!-- Attachment Menu -->
+                            <div id="attachMenu" class="absolute bottom-16 left-4 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 hidden transition-all duration-200">
+                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-1 mb-1">Lampiran</div>
+                                <label class="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-xl cursor-pointer transition">
+                                    <div class="w-8 h-8 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                     </div>
-                                </div>
+                                    <span class="text-xs font-bold text-gray-600">Galeri</span>
+                                    <input type="file" class="hidden" accept="image/*,video/*" onchange="handleAttachment(this)">
+                                </label>
+                                <label class="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-xl cursor-pointer transition">
+                                    <div class="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    </div>
+                                    <span class="text-xs font-bold text-gray-600">Dokumen</span>
+                                    <input type="file" class="hidden" accept=".pdf,.doc,.docx" onchange="handleAttachment(this)">
+                                </label>
+                            </div>
 
-                                <button id="send-button" type="submit" class="ms-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full">➤</button>
+                            <form id="message-form" onsubmit="sendMessage(event)" class="flex-1 flex gap-2">
+                                <input id="message-input" type="text" placeholder="Ketik pesan..." 
+                                    class="flex-1 bg-white border-none rounded-xl px-4 py-2.5 shadow-sm focus:ring-1 focus:ring-[#82C17D] text-sm" />
+                                <button type="submit" class="bg-[#82C17D] hover:bg-[#6ab065] text-white p-2.5 rounded-xl shadow-md transition-all active:scale-95">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                                </button>
                             </form>
                         </div>
                     </div>
@@ -98,151 +140,139 @@
     </div>
 
     @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/pusher-js@8.3.0/dist/web/pusher.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.1/dist/echo.iife.js"></script>
     <script>
+        window.Pusher = Pusher;
+        window.Echo = new Echo({
+            broadcaster: 'reverb',
+            key: '{{ env('REVERB_APP_KEY') }}',
+            wsHost: '{{ env('REVERB_HOST') }}',
+            wsPort: {{ env('REVERB_PORT') }},
+            wssPort: {{ env('REVERB_PORT') }},
+            forceTLS: false,
+            enabledTransports: ['ws', 'wss'],
+        });
+
         let selectedUserId = null;
-        let pollInterval = null;
+        const currentUserId = {{ Auth::id() }};
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        function selectUser(id, name, email, avatar) {
+        // Listen for new messages
+        window.Echo.private(`chat.${currentUserId}`)
+            .listen('MessageSent', (e) => {
+                if (selectedUserId && (e.message.sender_id === selectedUserId)) {
+                    appendMessage(e.message);
+                    markAsRead(e.message.sender_id);
+                }
+            });
+
+        function selectUser(id, name, username, avatar) {
             selectedUserId = id;
             document.getElementById('chat-empty').classList.add('hidden');
             document.getElementById('chat-conversation').classList.remove('hidden');
             document.getElementById('chat-header-name').textContent = name;
-            document.getElementById('chat-header-sub').textContent = email;
+            document.getElementById('chat-header-sub').textContent = '@' + username;
             document.getElementById('chat-header-avatar').src = avatar;
 
-            // Highlight selected user
-            document.querySelectorAll('.chat-user').forEach(el => el.classList.remove('bg-gray-50'));
-            event.currentTarget.classList.add('bg-gray-50');
+            document.querySelectorAll('.chat-user').forEach(el => el.classList.remove('bg-gray-100'));
+            event.currentTarget.classList.add('bg-gray-100');
 
-            // Load messages immediately
             loadMessages();
-
-            // Start polling every 3 seconds
-            if (pollInterval) clearInterval(pollInterval);
-            pollInterval = setInterval(loadMessages, 3000);
+            markAsRead(id);
         }
 
         async function loadMessages() {
             if (!selectedUserId) return;
-
             try {
                 const response = await fetch(`/messages/conversation/${selectedUserId}`);
                 const messages = await response.json();
                 renderMessages(messages);
-            } catch (error) {
-                console.error('Error loading messages:', error);
-            }
+            } catch (error) { console.error(error); }
         }
 
         function renderMessages(messages) {
             const container = document.getElementById('messages');
-            const currentUserId = {{ Auth::id() }};
-            let html = '';
-
-            if (messages.length === 0) {
-                html = '<div class="text-center text-gray-400 mt-10">Belum ada pesan.</div>';
-            } else {
-                messages.forEach(m => {
-                    const isMine = m.sender_id === currentUserId;
-                    const time = new Date(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
-                    html += `
-                        <div class="mb-4 flex ${isMine ? 'justify-end' : 'justify-start'}">
-                            <div class="bubble ${isMine ? 'bubble--me' : 'bubble--other'} text-black p-3 max-w-[60%] relative group">
-                                ${m.body ? `<div class="mb-1">${m.body}</div>` : ''}
-                                <div class="text-xs text-gray-500 mt-1 flex items-center justify-end">
-                                    ${time}
-                                    ${isMine ? `<span class="ms-2 ${m.is_read ? 'text-blue-500' : 'text-gray-400'}">${m.is_read ? '✔✔' : '✔'}</span>` : ''}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-
-            container.innerHTML = html;
+            container.innerHTML = '';
+            messages.forEach(m => appendMessage(m, false));
             container.scrollTop = container.scrollHeight;
+        }
+
+        function appendMessage(m, scroll = true) {
+            const container = document.getElementById('messages');
+            const isMine = m.sender_id === currentUserId;
+            const time = new Date(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+            const div = document.createElement('div');
+            div.className = `mb-2 flex ${isMine ? 'justify-end' : 'justify-start'}`;
+            div.innerHTML = `
+                <div class="relative max-w-[75%] px-3 py-1.5 rounded-xl shadow-sm bubble ${isMine ? 'bubble--me bg-[#dcf8c6]' : 'bubble--other bg-white'}">
+                    <div class="text-[14.5px] leading-relaxed text-gray-800 pr-10">${m.body}</div>
+                    <div class="absolute bottom-1 right-2 flex items-center gap-1">
+                        <span class="text-[9px] text-gray-400 font-medium">${time}</span>
+                        ${isMine ? `<span class="text-[10px] ${m.is_read ? 'text-[#34b7f1]' : 'text-gray-300'}">
+                            ${m.is_read ? '✔✔' : '✔'}
+                        </span>` : ''}
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            if (scroll) container.scrollTop = container.scrollHeight;
         }
 
         async function sendMessage(e) {
             e.preventDefault();
-            if (!selectedUserId) return;
-
             const input = document.getElementById('message-input');
             const body = input.value.trim();
-            if (!body) return;
-
+            if (!body || !selectedUserId) return;
             input.value = '';
 
             try {
                 const response = await fetch('/messages', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        recipient_id: selectedUserId,
-                        body: body
-                    })
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify({ recipient_id: selectedUserId, body: body })
                 });
-
-                if (response.ok) {
-                    loadMessages();
-                }
-            } catch (error) {
-                console.error('Error sending message:', error);
-            }
+                const sentMessage = await response.json();
+                appendMessage(sentMessage);
+            } catch (error) { console.error(error); }
         }
 
-        function toggleAttachMenu() {
-            const menu = document.getElementById('attachMenu');
-            menu.classList.toggle('hidden');
+        function markAsRead(userId) {
+            fetch(`/messages/conversation/${userId}/read`, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken } });
         }
+
+        function toggleAttachMenu() { document.getElementById('attachMenu').classList.toggle('hidden'); }
 
         function handleAttachment(input) {
             document.getElementById('attachMenu').classList.add('hidden');
-            if (input.files.length > 0) {
-                // For now, just show the file name — full upload can be added later
-                const fileName = input.files[0].name;
-                document.getElementById('message-input').value = `[File: ${fileName}]`;
-            }
+            if (input.files.length > 0) document.getElementById('message-input').value = `[File: ${input.files[0].name}]`;
         }
 
         function filterUsers(query) {
             const q = query.toLowerCase();
             document.querySelectorAll('.chat-user').forEach(el => {
-                const name = el.dataset.name;
-                const email = el.dataset.email;
-                if (name.includes(q) || email.includes(q)) {
-                    el.style.display = '';
-                } else {
-                    el.style.display = 'none';
-                }
+                const match = el.dataset.name.includes(q) || el.dataset.email.includes(q);
+                el.style.display = match ? '' : 'none';
             });
         }
 
-        function setFilter(filter) {
-            document.getElementById('filter-all').className = 'px-3 py-1 rounded-full text-sm ' + (filter === 'all' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700');
-            document.getElementById('filter-unread').className = 'px-3 py-1 rounded-full text-sm ' + (filter === 'unread' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700');
-            document.getElementById('filter-important').className = 'px-3 py-1 rounded-full text-sm ' + (filter === 'important' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700');
-        }
-
-        // Close attach menu on outside click
         document.addEventListener('click', function(e) {
             const menu = document.getElementById('attachMenu');
-            if (menu && !menu.contains(e.target) && !e.target.closest('button[onclick="toggleAttachMenu()"]')) {
-                menu.classList.add('hidden');
-            }
+            if (menu && !menu.contains(e.target) && !e.target.closest('button[onclick="toggleAttachMenu()"]')) menu.classList.add('hidden');
         });
     </script>
 
     <style>
-        .bubble { position: relative; border-radius: 12px; box-shadow: 0 6px 18px rgba(16,24,40,0.06); }
-        .bubble--me { background-color: #dcfce7; color: #064e3b; }
-        .bubble--other { background-color: #ffffff; color: #111827; }
+        .bubble { position: relative; }
+        .bubble--me::after {
+            content: ""; position: absolute; top: 0; right: -8px; width: 0; height: 0;
+            border: 10px solid transparent; border-left-color: #dcf8c6; border-top-color: #dcf8c6; border-bottom: 0;
+        }
+        .bubble--other::after {
+            content: ""; position: absolute; top: 0; left: -8px; width: 0; height: 0;
+            border: 10px solid transparent; border-right-color: #ffffff; border-top-color: #ffffff; border-bottom: 0;
+        }
     </style>
     @endpush
 </x-app-layout>

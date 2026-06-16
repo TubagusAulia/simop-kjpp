@@ -2,9 +2,26 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $nama_proyek
+ * @property string|null $deskripsi
+ * @property string $status
+ * @property string|null $current_phase
+ * @property int|null $created_by
+ * @property bool $finish_requested
+ * @property-read User|null $creator
+ * @property-read Properti|null $properti
+ * @property-read Collection $alokasi
+ * @property-read Collection $users
+ * @property-read Collection $karyawans
+ * @property-read Collection $clients
+ * @property-read Collection $mitras
+ */
 class Proyek extends Model
 {
     use HasFactory;
@@ -20,11 +37,16 @@ class Proyek extends Model
         'current_phase',
         'kontrak_file',
         'created_by',
+        'finish_requested',
+        'finish_requested_by',
+        'finish_requested_at',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'due_date' => 'date',
+        'finish_requested_at' => 'datetime',
+        'finish_requested' => 'boolean',
     ];
 
     protected static function booted()
@@ -36,26 +58,22 @@ class Proyek extends Model
         });
     }
 
-    // The admin who created this project
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    // All user allocations for this project
     public function alokasi()
     {
         return $this->hasMany(AlokasiProyek::class, 'proyek_id');
     }
 
-    // All users assigned to this project
     public function users()
     {
         return $this->belongsToMany(User::class, 'alokasi_proyek', 'proyek_id', 'user_id')
             ->withPivot('allocated_by', 'allocated_at');
     }
 
-    // Specific role queries
     public function karyawans()
     {
         return $this->belongsToMany(User::class, 'alokasi_proyek', 'proyek_id', 'user_id')
@@ -77,5 +95,46 @@ class Proyek extends Model
     public function properti()
     {
         return $this->hasOne(Properti::class, 'proyek_id');
+    }
+
+    /**
+     * Get the current active collection based on phase.
+     */
+    public function getCurrentCollection()
+    {
+        $properti = $this->properti;
+        if (! $properti) {
+            return null;
+        }
+
+        $phase = $this->current_phase ?? 'dokumen';
+
+        return match ($phase) {
+            'dokumen' => $properti->koleksiDokumen,
+            'fisik' => $properti->koleksiFisik,
+            'dinilai' => $properti->koleksiNilai,
+            default => null,
+        };
+    }
+
+    /**
+     * Get the current task from the active collection.
+     * Returns ['role' => string, 'message' => string] or null.
+     */
+    public function getCurrentTask(): ?array
+    {
+        $phase = $this->current_phase ?? 'dokumen';
+
+        // Project complete — no task
+        if ($phase === 'selesai') {
+            return null;
+        }
+
+        $collection = $this->getCurrentCollection();
+        if (! $collection) {
+            return null;
+        }
+
+        return $collection->getTask();
     }
 }

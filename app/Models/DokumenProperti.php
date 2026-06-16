@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class DokumenProperti extends Model
 {
@@ -16,6 +16,7 @@ class DokumenProperti extends Model
         'uploaded_by',
         'tipe_dokumen',
         'nama_dokumen',
+        'deskripsi',
         'file_path',
         'status',
         'catatan',

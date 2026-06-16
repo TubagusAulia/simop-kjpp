@@ -4,8 +4,9 @@
         <p class="mt-1 text-sm text-gray-600">{{ __('Ensure your account is using a long, random password to stay secure.') }}</p>
     </header>
 
-    <form method="POST" action="{{ route('password.store') }}" class="mt-6 space-y-6">
+    <form method="POST" action="{{ route('password.update') }}" class="mt-6 space-y-6">
         @csrf
+        @method('put')
 
         <div>
             <x-input-label for="current_password" :value="__('Current Password')" />

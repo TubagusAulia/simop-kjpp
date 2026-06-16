@@ -71,7 +71,7 @@ class DocumentRequirementService
                 'optional' => [
                     'peta_topografi' => 'Peta Topografi/Kontur Tanah',
                     'site_plan' => 'Rencana Induk/Site Plan Kawasan',
-                ]
+                ],
             ],
             'rumah_tinggal' => [
                 'name' => 'Rumah Tinggal (Bangunan Hunian Tunggal)',
@@ -83,7 +83,7 @@ class DocumentRequirementService
                     'denah_arsitektur' => 'Gambar Denah Arsitektur',
                     'rab_material' => 'Rencana Anggaran Biaya & Spesifikasi Material',
                     'perjanjian_sewa' => 'Perjanjian Sewa (Jika dikontrakkan)',
-                ]
+                ],
             ],
             'rumah_tinggal_asumsi' => [
                 'name' => 'Rumah Tinggal (Tanpa IMB - Asumsi Khusus)',
@@ -95,7 +95,7 @@ class DocumentRequirementService
                     'denah_arsitektur' => 'Gambar Denah Arsitektur',
                     'rab_material' => 'Rencana Anggaran Biaya & Spesifikasi Material',
                     'perjanjian_sewa' => 'Perjanjian Sewa (Jika dikontrakkan)',
-                ]
+                ],
             ],
             'ruko_rukan' => [
                 'name' => 'Rumah Toko dan Rumah Kantor (Ruko/Rukan)',
@@ -107,7 +107,7 @@ class DocumentRequirementService
                     'denah_arsitektur' => 'Gambar Denah Arsitektur (Hunian & Usaha)',
                     'rab' => 'Rencana Anggaran Biaya',
                     'perjanjian_sewa' => 'Perjanjian Sewa-Menyewa',
-                ]
+                ],
             ],
             'apartemen_kondominium' => [
                 'name' => 'Apartemen dan Kondominium (Satuan Rumah Susun)',
@@ -119,7 +119,7 @@ class DocumentRequirementService
                     'pertelaan_akta_pemisahan' => 'Dokumen Pertelaan & Akta Pemisahan (NPP)',
                     'konfirmasi_pengelola' => 'Surat Konfirmasi Pengelola (Tunggakan/Dana Cadangan)',
                     'perjanjian_sewa' => 'Perjanjian Sewa',
-                ]
+                ],
             ],
             'gedung_kantor' => [
                 'name' => 'Gedung Kantor (Bangunan Perkantoran Bertingkat)',
@@ -133,7 +133,7 @@ class DocumentRequirementService
                     'laporan_keuangan_3th' => 'Laporan Keuangan Audit (3 Tahun Terakhir)',
                     'perizinan_lingkungan' => 'Dokumen Perizinan Lingkungan',
                     'inspeksi_keselamatan' => 'Laporan Inspeksi Keselamatan Bangunan',
-                ]
+                ],
             ],
             'hotel' => [
                 'name' => 'Hotel dan Properti Perhotelan',
@@ -148,7 +148,7 @@ class DocumentRequirementService
                     'lisensi_bintang' => 'Lisensi Hotel / Sertifikat Bintang',
                     'perizinan_lingkungan' => 'Dokumen Perizinan Lingkungan',
                     'analisis_okupansi' => 'Analisis Okupansi dan Tarif Kamar Historis',
-                ]
+                ],
             ],
             'pusat_perbelanjaan' => [
                 'name' => 'Pusat Perbelanjaan dan Mall',
@@ -163,7 +163,7 @@ class DocumentRequirementService
                     'daftar_tenant' => 'Daftar Tenant dan Perjanjian Sewa Utama',
                     'analisis_okupansi_sewa' => 'Analisis Okupansi dan Tingkat Sewa',
                     'perizinan_lingkungan' => 'Dokumen Perizinan Lingkungan',
-                ]
+                ],
             ],
             'rumah_sakit' => [
                 'name' => 'Rumah Sakit dan Fasilitas Kesehatan',
@@ -179,7 +179,7 @@ class DocumentRequirementService
                     'perizinan_kesehatan' => 'Dokumen Perizinan Kesehatan',
                     'analisis_okupansi_tarif' => 'Analisis Okupansi dan Tarif Rawat Inap',
                     'limbah_medis' => 'Dokumen Lingkungan (Limbah Medis)',
-                ]
+                ],
             ],
             'pabrik_industri' => [
                 'name' => 'Pabrik dan Fasilitas Industri',
@@ -195,7 +195,7 @@ class DocumentRequirementService
                     'nib_operasional' => 'Izin Operasional & Nomor Induk Berusaha (NIB)',
                     'sertifikat_iso' => 'Sertifikat ISO / Standar Industri',
                     'maintenance_schedule' => 'Laporan Kondisi & Schedule Pemeliharaan Mesin',
-                ]
+                ],
             ],
             'gudang_penyimpanan' => [
                 'name' => 'Gudang dan Fasilitas Penyimpanan (Warehouse)',
@@ -209,7 +209,7 @@ class DocumentRequirementService
                     'izin_b3' => 'Dokumen Perizinan Lingkungan (Bahan Berbahaya)',
                     'perjanjian_sewa' => 'Perjanjian Sewa-Menyewa Utama',
                     'kondisi_bangunan_insulasi' => 'Laporan Kondisi Bangunan (Insulasi & Pendingin)',
-                ]
+                ],
             ],
             'bengkel_servis' => [
                 'name' => 'Bengkel dan Pusat Servis Otomotif',
@@ -223,7 +223,7 @@ class DocumentRequirementService
                     'limbah_oli_kimia' => 'Dokumen Perizinan Lingkungan (Limbah Oli/Kimia)',
                     'perjanjian_sewa' => 'Perjanjian Sewa (Jika dikontrakkan)',
                     'laporan_omset' => 'Laporan Omset / Keuangan (Pendekatan Pendapatan)',
-                ]
+                ],
             ],
             'sekolah_pendidikan' => [
                 'name' => 'Sekolah dan Institusi Pendidikan',
@@ -237,7 +237,7 @@ class DocumentRequirementService
                     'izin_operasional' => 'Izin Operasional Institusi Pendidikan',
                     'akreditasi_sekolah' => 'Akreditasi Sekolah atau Program Studi',
                     'laporan_keuangan' => 'Laporan Keuangan (Biaya Pendidikan)',
-                ]
+                ],
             ],
             'rumah_ibadah' => [
                 'name' => 'Rumah Ibadah (Masjid/Gereja/Vihara/Pura/Kuil)',
@@ -250,7 +250,7 @@ class DocumentRequirementService
                 'optional' => [
                     'izin_pemda_kemenag' => 'Dokumen Izin Pemda / Kementerian Agama',
                     'laporan_keuangan_yayasan' => 'Laporan Keuangan Yayasan',
-                ]
+                ],
             ],
             'restoran_cafe' => [
                 'name' => 'Restoran dan Cafe (Fasilitas Kuliner)',
@@ -265,7 +265,7 @@ class DocumentRequirementService
                     'kesehatan_lingkungan' => 'Sertifikat Kesehatan Lingkungan',
                     'perjanjian_sewa' => 'Perjanjian Sewa (Jika dikontrakkan)',
                     'laporan_keuangan_historis' => 'Laporan Keuangan atau Omset Historis',
-                ]
+                ],
             ],
             'showroom' => [
                 'name' => 'Showroom dan Ruang Pamer Penjualan',
@@ -279,7 +279,7 @@ class DocumentRequirementService
                     'perjanjian_sewa' => 'Perjanjian Sewa dengan Pemilik',
                     'laporan_penjualan_historis' => 'Laporan Penjualan Historis',
                     'perizinan_lingkungan' => 'Dokumen Perizinan Lingkungan',
-                ]
+                ],
             ],
             'kios_stand' => [
                 'name' => 'Kios dan Stand (Pusat Perbelanjaan/Bandara)',
@@ -293,7 +293,7 @@ class DocumentRequirementService
                     'dokumen_pertelaan' => 'Dokumen Pertelaan (Jika diperlukan)',
                     'perjanjian_sewa_ketiga' => 'Perjanjian Sewa-Menyewa (Pihak Ketiga)',
                     'laporan_pendapatan_sewa' => 'Laporan Pendapatan Sewa',
-                ]
+                ],
             ],
             'hiburan_rekreasi' => [
                 'name' => 'Tempat Hiburan dan Rekreasi (Bioskop/Karaoke/Taman)',
@@ -308,7 +308,7 @@ class DocumentRequirementService
                     'izin_usaha_hiburan' => 'Izin Usaha Tempat Hiburan (Pemda)',
                     'keselamatan_bangunan' => 'Sertifikat Keselamatan Bangunan',
                     'kebisingan_lingkungan' => 'Dokumen Perizinan Lingkungan (Kebisingan)',
-                ]
+                ],
             ],
             'studio_aula' => [
                 'name' => 'Studio dan Aula Serbaguna',
@@ -322,7 +322,7 @@ class DocumentRequirementService
                     'izin_usaha_serbaguna' => 'Izin Usaha Tempat Serbaguna',
                     'laporan_pendapatan_booking' => 'Laporan Pendapatan (Pemesanan Historis)',
                     'perizinan_lingkungan' => 'Dokumen Perizinan Lingkungan',
-                ]
+                ],
             ],
             'layanan_kesehatan_lain' => [
                 'name' => 'Layanan Kesehatan Lainnya (Klinik/Apotek/Lab)',
@@ -336,7 +336,7 @@ class DocumentRequirementService
                     'izin_klinik_praktek' => 'Sertifikat Izin Klinik atau Praktek (Dinkes)',
                     'laporan_keuangan_omset' => 'Laporan Keuangan atau Omset Historis',
                     'limbah_medis' => 'Dokumen Perizinan Lingkungan (Limbah Medis)',
-                ]
+                ],
             ],
         ];
 
@@ -349,20 +349,22 @@ class DocumentRequirementService
     public static function canProceed($properti)
     {
         $typeReqs = self::getTypeRequirements($properti->tipe_properti);
-        if (!$typeReqs) return false;
+        if (! $typeReqs) {
+            return false;
+        }
 
         $globalMandatory = array_keys(self::getGlobalRequirements());
         $typeMandatory = array_keys($typeReqs['mandatory']);
 
         $allMandatory = array_merge($globalMandatory, $typeMandatory);
-        
+
         $verifiedDocs = $properti->dokumens()
             ->where('status', 'terverifikasi')
             ->pluck('tipe_dokumen')
             ->toArray();
 
         foreach ($allMandatory as $req) {
-            if (!in_array($req, $verifiedDocs)) {
+            if (! in_array($req, $verifiedDocs)) {
                 return false;
             }
         }

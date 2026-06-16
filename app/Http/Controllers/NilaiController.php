@@ -15,7 +15,7 @@ class NilaiController extends Controller
      */
     public function store(Request $request, Properti $properti)
     {
-        if (!auth()->user()->isKaryawan()) {
+        if (! auth()->user()->isKaryawan()) {
             abort(403, 'Hanya Karyawan yang dapat memberikan penilaian.');
         }
 
@@ -23,14 +23,15 @@ class NilaiController extends Controller
         $dokumenStatus = $this->checkDokumenStatus($properti);
         $fisikStatus = $this->checkFisikStatus($properti);
 
-        if (!$dokumenStatus['complete'] || !$fisikStatus['complete']) {
+        if (! $dokumenStatus['complete'] || ! $fisikStatus['complete']) {
             $missing = [];
-            if (!$dokumenStatus['complete']) {
-                $missing[] = 'Dokumen belum lengkap: ' . implode(', ', $dokumenStatus['missing']);
+            if (! $dokumenStatus['complete']) {
+                $missing[] = 'Dokumen belum lengkap: '.implode(', ', $dokumenStatus['missing']);
             }
-            if (!$fisikStatus['complete']) {
-                $missing[] = 'Verifikasi fisik belum lengkap: ' . implode(', ', $fisikStatus['missing']);
+            if (! $fisikStatus['complete']) {
+                $missing[] = 'Verifikasi fisik belum lengkap: '.implode(', ', $fisikStatus['missing']);
             }
+
             return back()->with('warning', implode(' | ', $missing));
         }
 
@@ -48,12 +49,6 @@ class NilaiController extends Controller
             ]
         );
 
-        // Update project phase to 'dinilai' if not already past it
-        $proyek = $properti->proyek;
-        if ($proyek && in_array($proyek->current_phase, ['dimulai', 'dokumen', 'fisik'])) {
-            $proyek->update(['current_phase' => 'dinilai']);
-        }
-
         return back()->with('success', 'Penilaian berhasil disimpan.');
     }
 
@@ -63,7 +58,7 @@ class NilaiController extends Controller
      */
     public function destroy(Nilai $nilai)
     {
-        if (!auth()->user()->isKaryawan()) {
+        if (! auth()->user()->isKaryawan()) {
             abort(403, 'Hanya Karyawan yang dapat menghapus penilaian.');
         }
 
@@ -79,7 +74,7 @@ class NilaiController extends Controller
     private function checkDokumenStatus(Properti $properti): array
     {
         $typeReqs = DocumentRequirementService::getTypeRequirements($properti->tipe_properti);
-        if (!$typeReqs) {
+        if (! $typeReqs) {
             return ['complete' => false, 'missing' => ['Tipe properti tidak dikenali']];
         }
 
@@ -93,7 +88,7 @@ class NilaiController extends Controller
 
         $missing = [];
         foreach ($allMandatory as $key => $label) {
-            if (!in_array($key, $verifiedTypes)) {
+            if (! in_array($key, $verifiedTypes)) {
                 // Check if uploaded but not yet verified
                 $uploaded = $properti->dokumens()
                     ->where('tipe_dokumen', $key)

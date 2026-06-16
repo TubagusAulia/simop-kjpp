@@ -2,20 +2,25 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use App\Models\Proyek;
 use App\Models\AlokasiProyek;
-use App\Models\Properti;
-use App\Models\DokumenProperti;
-use App\Models\ChecklistFisik;
 use App\Models\AspekFisik;
+use App\Models\ChecklistFisik;
+use App\Models\DokumenProperti;
+use App\Models\KoleksiDokumen;
+use App\Models\KoleksiFisik;
+use App\Models\KoleksiNilai;
 use App\Models\Nilai;
+use App\Models\Properti;
+use App\Models\Proyek;
+use App\Models\User;
+use App\Services\DocumentRequirementService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 // Manually require FPDF if not auto-loaded
-if (!class_exists('FPDF')) {
+if (! class_exists('FPDF')) {
     $fpdfPath = base_path('vendor/setasign/fpdf/fpdf.php');
     if (file_exists($fpdfPath)) {
         require_once $fpdfPath;
@@ -26,7 +31,21 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // ── 0. Prep: Storage Cleanup ──
+        // ── 0. Prep: DB + Storage Cleanup ──
+        // Wipe all tables and reset SQLite autoincrement
+        DB::connection()->getPdo()->exec('PRAGMA foreign_keys = OFF');
+        $tables = [
+            'nilai', 'aspek_fisik', 'checklist_fisik', 'dokumen_properti',
+            'koleksi_nilai', 'koleksi_fisik', 'koleksi_dokumen',
+            'alokasi_proyek', 'properti', 'proyek', 'users',
+        ];
+        foreach ($tables as $table) {
+            DB::connection()->getPdo()->exec("DELETE FROM \"{$table}\"");
+        }
+        // Reset autoincrement counters
+        DB::connection()->getPdo()->exec("DELETE FROM sqlite_sequence WHERE name IN ('".implode("','", $tables)."')");
+        DB::connection()->getPdo()->exec('PRAGMA foreign_keys = ON');
+
         Storage::disk('public')->deleteDirectory('kontrak');
         Storage::disk('public')->deleteDirectory('dokumen');
         Storage::disk('public')->deleteDirectory('aspek-fisik');
@@ -34,15 +53,26 @@ class UserSeeder extends Seeder
         Storage::disk('public')->makeDirectory('dokumen');
         Storage::disk('public')->makeDirectory('aspek-fisik');
 
+        // ── 0b. Ensure storage symlink exists ──
+        $linkPath = public_path('storage');
+        $targetPath = storage_path('app/public');
+        if (! file_exists($linkPath) && ! is_link($linkPath)) {
+            $created = @symlink($targetPath, $linkPath);
+            if (! $created) {
+                // Fallback: try exec (Windows may need elevated perms for symlink)
+                @exec('mklink /D '.escapeshellarg($linkPath).' '.escapeshellarg($targetPath).' 2>&1');
+            }
+        }
+
         // ── 1. Create Users ──
         $users = $this->createUsers();
 
-        // ── 2. Create Projects (5 phases UI testing) ──
-        $this->createProjectA($users); // Phase 1 — Dimulai (partial docs)
-        $this->createProjectB($users); // Phase 2 — Dokumen verified, partial fisik
-        $this->createProjectC($users); // Phase 3 — Fisik verified, draft nilai
-        $this->createProjectD($users); // Phase 4 — Dinilai (nilai final)
-        $this->createProjectE($users); // Phase 5 — Selesai (complete)
+        // ── 2. Create Projects (5 feature-logic test scenarios) ──
+        $this->createProjectA($users); // Phase: dokumen — All empty
+        $this->createProjectB($users); // Phase: dokumen — Docs almost complete (-1)
+        $this->createProjectC($users); // Phase: fisik — Docs verified, partial fisik
+        $this->createProjectD($users); // Phase: dinilai — All verified, draft nilai
+        $this->createProjectE($users); // Phase: selesai — Everything complete
     }
 
     private function createUsers()
@@ -65,57 +95,50 @@ class UserSeeder extends Seeder
             $created[$u['username']] = User::create([
                 'name' => $u['name'],
                 'username' => $u['username'],
-                'email' => "{$u['username']}@kjpp.test",
                 'password' => Hash::make('password'),
                 'role' => $u['role'],
-                'email_verified_at' => now(),
             ]);
         }
+
         return $created;
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // PROYEK A — Phase 1: Dimulai
-    // tanah_kosong, Jakarta Barat (Kebon Jeruk)
-    // Dokumen: 1 verified, 1 menunggu, 2 belum upload
-    // Fisik: belum ada checklist
+    // PROYEK A — Phase: dokumen, All Empty
+    // tanah_kosong — no docs, no checklist, no aspek, no nilai
+    // Tests: empty state UI, upload prompt, phase blockers
     // ═══════════════════════════════════════════════════════════════
     private function createProjectA($users)
     {
         $p = Proyek::create([
             'nama_proyek' => 'Penilaian Tanah Kosong Subang (Proyek A)',
-            'deskripsi' => 'Fase 1: Proyek baru. Dokumen sebagian terupload.',
+            'deskripsi' => 'Fase: Verifikasi Dokumen. Semua kosong — tes empty state.',
             'start_date' => now(),
             'due_date' => now()->addMonths(1),
             'status' => 'aktif',
-            'current_phase' => 'dimulai',
+            'current_phase' => 'dokumen',
             'created_by' => $users['admin']->id,
             'kontrak_file' => $this->genPdf('Kontrak Kerja', 'Penilaian Tanah Kosong Subang (Proyek A)', 'kontrak'),
         ]);
 
-        $properti = $this->getOrCreateProperti($p, 'tanah_kosong');
+        $this->getOrCreateProperti($p, 'tanah_kosong');
         $this->assign($p, [$users['karyawan1'], $users['klien1'], $users['mitra1']]);
 
-        // Dokumen verified (mandatory: sertifikat_utama sudah diverifikasi)
-        $this->addDoc($p, 'sertifikat_utama', 'Sertifikat Hak Milik No. 1234', $users['klien1'], $users['karyawan1'], 'terverifikasi');
-
-        // Dokumen uploaded but pending verification
-        $this->addDoc($p, 'pbb_terakhir', 'PBB Tahun 2025', $users['klien1'], null, 'menunggu');
-
-        // identitas_pemilik & shm_hgb_skur → belum diupload (missing)
+        // Nothing else — completely empty
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // PROYEK B — Phase 2: Dokumen Diverifikasi
-    // rumah_tinggal, Jakarta Selatan (Ciganjur)
-    // Dokumen: semua mandatory verified
-    // Fisik: 3 checklist — 1 verified, 1 menunggu, 1 belum ada aspek
+    // PROYEK B — Phase: dokumen, Docs Almost Complete
+    // rumah_tinggal — 5 mandatory: 4 verified, 1 menunggu (imb_pbg)
+    // 2 optional: 1 verified (stts_pbb), 1 menunggu (denah_arsitektur)
+    // No fisik, no nilai
+    // Tests: partial verification UI, "almost done" state
     // ═══════════════════════════════════════════════════════════════
     private function createProjectB($users)
     {
         $p = Proyek::create([
             'nama_proyek' => 'Penilaian Rumah Tinggal Antasari (Proyek B)',
-            'deskripsi' => 'Fase 2: Dokumen diverifikasi. Fisik sebagian terisi.',
+            'deskripsi' => 'Fase: Verifikasi Dokumen. Dokumen wajib hampir lengkap (-1), 2 dokumen opsional.',
             'start_date' => now()->subDays(10),
             'due_date' => now()->addMonths(1),
             'status' => 'aktif',
@@ -127,38 +150,35 @@ class UserSeeder extends Seeder
         $properti = $this->getOrCreateProperti($p, 'rumah_tinggal');
         $this->assign($p, [$users['karyawan1'], $users['karyawan2'], $users['klien1'], $users['klien2'], $users['mitra1'], $users['mitra2']]);
 
-        // Semua mandatory docs verified (3 global + 2 type-specific untuk rumah_tinggal)
-        $this->addDoc($p, 'sertifikat_utama', 'Sertifikat Hak Milik No. 5678', $users['klien1'], $users['karyawan2'], 'terverifikasi');
-        $this->addDoc($p, 'pbb_terakhir', 'PBB Tahun 2025', $users['klien1'], $users['karyawan2'], 'terverifikasi');
-        $this->addDoc($p, 'identitas_pemilik', 'KTP Pemilik Aset', $users['klien1'], $users['karyawan2'], 'terverifikasi');
-        $this->addDoc($p, 'shm_hgb_skur', 'SHM + Surat Ukur No 567', $users['klien1'], $users['karyawan2'], 'terverifikasi');
-        $this->addDoc($p, 'imb_pbg', 'IMB No. 2019/045', $users['klien1'], $users['karyawan2'], 'terverifikasi');
+        // Mandatory: 4 verified
+        $this->addDoc($properti, 'sertifikat_utama', 'Sertifikat Hak Milik No. 5678', $users['klien1'], $users['karyawan2'], 'terverifikasi');
+        $this->addDoc($properti, 'pbb_terakhir', 'PBB Tahun 2025', $users['klien1'], $users['karyawan2'], 'terverifikasi');
+        $this->addDoc($properti, 'identitas_pemilik', 'KTP Pemilik Aset', $users['klien1'], $users['karyawan2'], 'terverifikasi');
+        $this->addDoc($properti, 'shm_hgb_skur', 'SHM + Surat Ukur No 567', $users['klien1'], $users['karyawan2'], 'terverifikasi');
 
-        // 3 checklist fisik wajib
-        $cl1 = $this->addChecklist($properti, 'Struktur Bangunan Utama', $users['karyawan1']);
-        $cl2 = $this->addChecklist($properti, 'Kondisi Fasad & Eksterior', $users['karyawan1']);
-        $cl3 = $this->addChecklist($properti, 'Instalasi Listrik & Plumbing', $users['karyawan1']);
+        // Mandatory: 1 menunggu (the "-1" not yet verified)
+        $this->addDoc($properti, 'imb_pbg', 'IMB No. 2019/045', $users['klien1'], null, 'menunggu');
 
-        // Checklist 1: verified
-        $this->addAspekFisik($properti, $cl1, 'Struktur Bangunan Utama', 'Struktur dalam kondisi baik, tidak ada retakan.', $users['karyawan1'], $users['karyawan1'], 'terverifikasi', -6.3150, 106.8050);
+        // Optional: 1 verified
+        $this->addDoc($properti, 'stts_pbb', 'STTS PBB Tahun Terakhir', $users['klien1'], $users['karyawan2'], 'terverifikasi');
 
-        // Checklist 2: menunggu verifikasi
-        $this->addAspekFisik($properti, $cl2, 'Kondisi Fasad & Eksterior', 'Fasad cat mengelupas di bagian timur.', $users['karyawan1'], $users['karyawan1'], 'menunggu', -6.3151, 106.8051);
-
-        // Checklist 3: belum ada aspek fisik (tidak buat AspekFisik)
+        // Optional: 1 menunggu
+        $this->addDoc($properti, 'denah_arsitektur', 'Gambar Denah Arsitektur', $users['klien1'], null, 'menunggu');
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // PROYEK C — Phase 3: Fisik Diverifikasi
-    // gudang_penyimpanan, Jakarta Utara (Priok)
-    // Dokumen: semua verified. Fisik: semua verified.
-    // Nilai: draft (terisi, belum final)
+    // PROYEK C — Phase: fisik, Docs All Verified, Partial Fisik
+    // gudang_penyimpanan — 7 mandatory docs all verified
+    // 3 checklist wajib: 2 have aspek (1 verified, 1 menunggu), 1 belum
+    // 2 optional aspek: 1 verified, 1 menunggu
+    // No nilai
+    // Tests: fisik tab with mixed statuses, verification flow
     // ═══════════════════════════════════════════════════════════════
     private function createProjectC($users)
     {
         $p = Proyek::create([
             'nama_proyek' => 'Penilaian Gudang Logistik Priok (Proyek C)',
-            'deskripsi' => 'Fase 3: Dokumen & fisik diverifikasi. Draft penilaian.',
+            'deskripsi' => 'Fase: Verifikasi Fisik. Dokumen semua verified, fisik sebagian.',
             'start_date' => now()->subMonths(1),
             'due_date' => now()->addMonths(1),
             'status' => 'aktif',
@@ -170,97 +190,127 @@ class UserSeeder extends Seeder
         $properti = $this->getOrCreateProperti($p, 'gudang_penyimpanan');
         $this->assign($p, [$users['karyawan1'], $users['karyawan3'], $users['klien1'], $users['klien3'], $users['mitra1'], $users['mitra3']]);
 
-        // Semua mandatory docs verified (4 global + 4 type-specific)
+        // All 7 mandatory docs verified
         $mandatories = ['sertifikat_utama', 'pbb_terakhir', 'identitas_pemilik', 'shm_hgb_lengkap', 'imb_pbg_gudang', 'denah_loading_dock', 'daftar_aktiva_me_handling'];
         foreach ($mandatories as $m) {
-            $this->addDoc($p, $m, "Dokumen Wajib: $m", $users['klien3'], $users['karyawan3'], 'terverifikasi');
+            $this->addDoc($properti, $m, "Dokumen Wajib: $m", $users['klien3'], $users['karyawan3'], 'terverifikasi');
         }
 
-        // 4 checklist fisik, semua verified
-        $items = ['Struktur Rangka Baja', 'Kondisi Lantai Beton', 'Sistem Ventilasi', 'Akses Jalan & Loading Dock'];
-        foreach ($items as $i => $nama) {
-            $cl = $this->addChecklist($properti, $nama, $users['karyawan3']);
-            $this->addAspekFisik($properti, $cl, $nama, "Verifikasi: $nama — kondisi baik.", $users['karyawan3'], $users['karyawan3'], 'terverifikasi', -6.1056 + ($i * 0.0001), 106.8913 + ($i * 0.0001));
-        }
+        // 3 checklist fisik wajib
+        $cl1 = $this->addChecklist($properti, 'Struktur Rangka Baja', $users['karyawan3']);
+        $cl2 = $this->addChecklist($properti, 'Kondisi Lantai Beton', $users['karyawan3']);
+        $cl3 = $this->addChecklist($properti, 'Akses Jalan & Loading Dock', $users['karyawan3']);
 
-        // Draft nilai
-        $this->addNilai($properti, 42000000000, 'Draft penilaian — perlu review sebelum submit final.', $users['karyawan3']);
+        // Checklist 1: has aspek, verified
+        $this->addAspekFisik($properti, $cl1, 'Struktur Rangka Baja', 'Struktur baja dalam kondisi baik, tidak ada karat.', $users['karyawan3'], $users['karyawan3'], 'terverifikasi', -6.1056, 106.8913);
+
+        // Checklist 2: has aspek, menunggu
+        $this->addAspekFisik($properti, $cl2, 'Kondisi Lantai Beton', 'Lantai beton retak di bagian barat.', $users['karyawan3'], $users['karyawan3'], 'menunggu', -6.1057, 106.8914);
+
+        // Checklist 3: belum ada aspek (no AspekFisik created)
+
+        // 2 optional aspek fisik (standalone, no checklist)
+        $this->addOptionalAspekFisik($properti, 'Peralatan Handling', 'Forklift dan conveyor dalam kondisi operasional.', $users['karyawan3'], $users['karyawan3'], 'terverifikasi', -6.1058, 106.8915);
+        $this->addOptionalAspekFisik($properti, 'Sistem Insulasi & Pendingin', 'Insulasi atap perlu perbaikan.', $users['karyawan3'], $users['karyawan3'], 'menunggu', -6.1059, 106.8916);
+
+        // Koleksi dokumen selesai (phase already advanced to fisik)
+        $this->completeKoleksi($properti, 'dokumen', $users['karyawan3']->id);
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // PROYEK D — Phase 4: Properti Dinilai
-    // pusat_perbelanjaan, Jakarta Selatan (Senayan)
-    // Semua verified + nilai final tersimpan
+    // PROYEK D — Phase: dinilai, All Verified, Draft Nilai (catatan empty)
+    // rumah_tinggal — 5 mandatory docs all verified, 2 checklist+aspek verified
+    // 1 optional aspek verified, nilai drafted with empty catatan
     // ═══════════════════════════════════════════════════════════════
     private function createProjectD($users)
     {
         $p = Proyek::create([
-            'nama_proyek' => 'Penilaian Mall Senayan City (Proyek D)',
-            'deskripsi' => 'Fase 4: Semua verifikasi selesai. Nilai final tersimpan.',
+            'nama_proyek' => 'Penilaian Rumah Tinggal Ciganjur (Proyek D)',
+            'deskripsi' => 'Fase: Penilaian. Semua verified, nilai draft (catatan kosong).',
             'start_date' => now()->subMonths(3),
             'due_date' => now()->addMonths(1),
             'status' => 'aktif',
             'current_phase' => 'dinilai',
             'created_by' => $users['admin']->id,
-            'kontrak_file' => $this->genPdf('Kontrak Kerja', 'Penilaian Mall Senayan City (Proyek D)', 'kontrak'),
+            'kontrak_file' => $this->genPdf('Kontrak Kerja', 'Penilaian Rumah Tinggal Ciganjur (Proyek D)', 'kontrak'),
         ]);
 
-        $properti = $this->getOrCreateProperti($p, 'pusat_perbelanjaan');
-        $this->assign($p, array_values($users));
+        $properti = $this->getOrCreateProperti($p, 'rumah_tinggal');
+        $this->assign($p, [$users['karyawan1'], $users['karyawan2'], $users['klien1'], $users['klien2'], $users['mitra1']]);
 
-        // Semua mandatory docs verified (4 global + 4 type-specific)
-        $mandatories = ['sertifikat_utama', 'pbb_terakhir', 'identitas_pemilik', 'hgb_induk', 'imb_pbg_mall', 'denah_zona_komersial', 'daftar_aktiva_me_lift', 'laporan_keuangan_3th'];
-        foreach ($mandatories as $m) {
-            $this->addDoc($p, $m, "Dokumen Final: $m", $users['klien1'], $users['karyawan1'], 'terverifikasi');
-        }
+        // All 5 mandatory docs verified
+        $this->addDoc($properti, 'sertifikat_utama', 'Sertifikat Hak Milik No. 9901', $users['klien1'], $users['karyawan1'], 'terverifikasi');
+        $this->addDoc($properti, 'pbb_terakhir', 'PBB Tahun 2025', $users['klien1'], $users['karyawan1'], 'terverifikasi');
+        $this->addDoc($properti, 'identitas_pemilik', 'KTP Pemilik Aset', $users['klien1'], $users['karyawan1'], 'terverifikasi');
+        $this->addDoc($properti, 'shm_hgb_skur', 'SHM + Surat Ukur No 990', $users['klien1'], $users['karyawan1'], 'terverifikasi');
+        $this->addDoc($properti, 'imb_pbg', 'IMB No. 2020/123', $users['klien1'], $users['karyawan1'], 'terverifikasi');
 
-        // 5 checklist fisik, semua verified
-        $items = ['Struktur Gedung Utama', 'Kondisi Fasad & Kaca', 'Sistem HVAC', 'Area Parkir & Akses', 'Food Court Area'];
-        foreach ($items as $i => $nama) {
-            $cl = $this->addChecklist($properti, $nama, $users['karyawan1']);
-            $this->addAspekFisik($properti, $cl, $nama, "Verifikasi: $nama — ok.", $users['karyawan1'], $users['karyawan1'], 'terverifikasi', -6.2271 + ($i * 0.0001), 106.7976 + ($i * 0.0001));
-        }
+        // 2 checklist fisik wajib, both verified
+        $cl1 = $this->addChecklist($properti, 'Struktur Bangunan Utama', $users['karyawan1']);
+        $cl2 = $this->addChecklist($properti, 'Kondisi Fasad & Eksterior', $users['karyawan1']);
+        $this->addAspekFisik($properti, $cl1, 'Struktur Bangunan Utama', 'Struktur dalam kondisi baik.', $users['karyawan1'], $users['karyawan1'], 'terverifikasi', -6.3150, 106.8050);
+        $this->addAspekFisik($properti, $cl2, 'Kondisi Fasad & Eksterior', 'Fasad cat baik.', $users['karyawan1'], $users['karyawan1'], 'terverifikasi', -6.3151, 106.8051);
 
-        // Nilai final
-        $this->addNilai($properti, 85000000000, 'Penilaian berdasarkan pendekatan biaya pengganti baru dan perbandingan pasar. Lokasi strategis di kawasan bisnis Senayan dengan okupansi tinggi.', $users['karyawan1']);
+        // 1 optional aspek fisik, verified
+        $this->addOptionalAspekFisik($properti, 'Perhalaman & Taman', 'Taman depan terawat baik.', $users['karyawan1'], $users['karyawan1'], 'terverifikasi', -6.3152, 106.8052);
+
+        // Nilai: drafted (value filled, catatan still empty)
+        $this->addNilai($properti, 3500000000, '', $users['karyawan1']);
+
+        // Koleksi dokumen + fisik selesai (phase already advanced to dinilai)
+        $this->completeKoleksi($properti, 'dokumen', $users['karyawan1']->id);
+        $this->completeKoleksi($properti, 'fisik', $users['karyawan1']->id);
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // PROYEK E — Phase 5: Proyek Selesai
-    // apartemen_kondominium, Jakarta Pusat (Sudirman)
-    // Semua complete + status selesai
+    // PROYEK E — Phase: selesai, Everything Complete
+    // tanah_kosong — all docs, fisik, nilai & catatan filled, project selesai
     // ═══════════════════════════════════════════════════════════════
     private function createProjectE($users)
     {
         $p = Proyek::create([
-            'nama_proyek' => 'Penilaian Apartemen Sudirman Park (Proyek E)',
-            'deskripsi' => 'Fase 5: Proyek selesai dan terkunci.',
+            'nama_proyek' => 'Penilaian Tanah Kosong Bandung (Proyek E)',
+            'deskripsi' => 'Fase: Selesai. Semua lengkap, proyek telah diselesaikan.',
             'start_date' => now()->subMonths(4),
             'due_date' => now()->subWeek(),
             'status' => 'selesai',
             'current_phase' => 'selesai',
             'created_by' => $users['admin']->id,
-            'kontrak_file' => $this->genPdf('Kontrak Kerja', 'Penilaian Apartemen Sudirman Park (Proyek E)', 'kontrak'),
+            'kontrak_file' => $this->genPdf('Kontrak Kerja', 'Penilaian Tanah Kosong Bandung (Proyek E)', 'kontrak'),
         ]);
 
-        $properti = $this->getOrCreateProperti($p, 'apartemen_kondominium');
+        $properti = $this->getOrCreateProperti($p, 'tanah_kosong');
         $this->assign($p, [$users['karyawan2'], $users['klien2'], $users['mitra2']]);
 
-        // Semua mandatory docs verified (3 global + 2 type-specific untuk apartemen)
-        $mandatories = ['sertifikat_utama', 'pbb_terakhir', 'identitas_pemilik', 'shmrs', 'slf_gedung'];
-        foreach ($mandatories as $m) {
-            $this->addDoc($p, $m, "Dokumen: $m", $users['klien2'], $users['karyawan2'], 'terverifikasi');
-        }
+        // All 4 mandatory docs verified (3 global + 1 type-specific for tanah_kosong)
+        $this->addDoc($properti, 'sertifikat_utama', 'Sertifikat Hak Milik No. 7701', $users['klien2'], $users['karyawan2'], 'terverifikasi');
+        $this->addDoc($properti, 'pbb_terakhir', 'PBB Tahun 2025', $users['klien2'], $users['karyawan2'], 'terverifikasi');
+        $this->addDoc($properti, 'identitas_pemilik', 'KTP Pemilik Aset', $users['klien2'], $users['karyawan2'], 'terverifikasi');
+        $this->addDoc($properti, 'shm_hgb_skur', 'SHM + Surat Ukur No 770', $users['klien2'], $users['karyawan2'], 'terverifikasi');
 
-        // 5 checklist fisik, semua verified
-        $items = ['Struktur Tower & Balcony', 'Kondisi Unit Interior', 'Fasilitas Umum (Pool, Gym)', 'Sistem Keamanan & Akses', 'Parkir Basement'];
-        foreach ($items as $i => $nama) {
-            $cl = $this->addChecklist($properti, $nama, $users['karyawan2']);
-            $this->addAspekFisik($properti, $cl, $nama, "Verifikasi: $nama — baik.", $users['karyawan2'], $users['karyawan2'], 'terverifikasi', -6.2088 + ($i * 0.0001), 106.8456 + ($i * 0.0001));
-        }
+        // 2 checklist fisik wajib, both verified
+        $cl1 = $this->addChecklist($properti, 'Kondisi Tanah & Topografi', $users['karyawan2']);
+        $cl2 = $this->addChecklist($properti, 'Akses Jalan & Batas Tanah', $users['karyawan2']);
+        $this->addAspekFisik($properti, $cl1, 'Kondisi Tanah & Topografi', 'Tanah memiliki kontur datar, tidak ada genangan.', $users['karyawan2'], $users['karyawan2'], 'terverifikasi', -6.9175, 107.6191);
+        $this->addAspekFisik($properti, $cl2, 'Akses Jalan & Batas Tanah', 'Akses jalan baik, batas tanah jelas.', $users['karyawan2'], $users['karyawan2'], 'terverifikasi', -6.9176, 107.6192);
 
-        // Nilai final
-        $this->addNilai($properti, 1200000000, 'Unit tipe 2BR, lantai 25 dengan view city. Penilaian berdasarkan transaksi sejenis di kawasan Sudirman.', $users['karyawan2']);
+        // 1 optional aspek fisik, verified
+        $this->addOptionalAspekFisik($properti, 'Peta Topografi', 'Topografi tanah datar, cocok untuk bangunan.', $users['karyawan2'], $users['karyawan2'], 'terverifikasi', -6.9177, 107.6193);
+
+        // Nilai + catatan filled
+        $this->addNilai($properti, 50000000000, 'Penilaian berdasarkan perbandingan pasar di kawasan Bandung Utara. Tanah kosong siap bangun dengan akses strategis.', $users['karyawan2']);
+
+        // All 3 koleksi selesai (project completed)
+        $this->completeKoleksi($properti, 'dokumen', $users['karyawan2']->id);
+        $this->completeKoleksi($properti, 'fisik', $users['karyawan2']->id);
+        $this->completeKoleksi($properti, 'nilai', $users['karyawan2']->id);
+
+        // Finish request: karyawan requested, admin accepted
+        $p->update([
+            'finish_requested' => true,
+            'finish_requested_by' => $users['karyawan2']->id,
+            'finish_requested_at' => now()->subDays(3),
+        ]);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -269,21 +319,60 @@ class UserSeeder extends Seeder
 
     private function getOrCreateProperti($proyek, $tipe)
     {
-        $properti = $proyek->properti()->first();
-        if (!$properti) {
-            $properti = $proyek->properti()->create(['nama_properti' => $proyek->nama_proyek]);
-        }
-        // Hanya update tipe jika belum di-set (Proyek A-D existing sudah punya tipe)
-        if (!$properti->tipe_properti) {
+        $properti = Properti::where('proyek_id', $proyek->id)->first();
+        if (! $properti) {
+            $properti = $proyek->properti()->create([
+                'nama_properti' => $proyek->nama_proyek,
+                'tipe_properti' => $tipe,
+            ]);
+        } else {
             $properti->update(['tipe_properti' => $tipe]);
         }
+        // Create koleksi if they don't exist
+        if (! $properti->koleksiDokumen) {
+            $globalReqs = DocumentRequirementService::getGlobalRequirements();
+            $typeReqs = DocumentRequirementService::getTypeRequirements($tipe);
+            $wajibKeys = ($typeReqs)
+                ? array_merge(array_keys($globalReqs), array_keys($typeReqs['mandatory'] ?? []))
+                : array_keys($globalReqs);
+            KoleksiDokumen::create(['properti_id' => $properti->id, 'wajib_list' => $wajibKeys]);
+        }
+        if (! $properti->koleksiFisik) {
+            KoleksiFisik::create(['properti_id' => $properti->id]);
+        }
+        if (! $properti->koleksiNilai) {
+            KoleksiNilai::create(['properti_id' => $properti->id]);
+        }
+
         return $properti;
+    }
+
+    /**
+     * Mark a koleksi as complete (selesai) by a karyawan.
+     */
+    private function completeKoleksi($properti, string $type, int $userId): void
+    {
+        $model = match ($type) {
+            'dokumen' => KoleksiDokumen::class,
+            'fisik' => KoleksiFisik::class,
+            'nilai' => KoleksiNilai::class,
+            default => null,
+        };
+        if ($model) {
+            $model::where('properti_id', $properti->id)->update([
+                'status' => 'selesai',
+                'completed_at' => now(),
+                'completed_by' => $userId,
+            ]);
+        }
     }
 
     private function assign($proyek, $users)
     {
         foreach ($users as $u) {
-            if ($u->role === 'admin') continue;
+            if ($u->role === 'admin') {
+                continue;
+            }
             AlokasiProyek::firstOrCreate([
                 'proyek_id' => $proyek->id,
                 'user_id' => $u->id,
@@ -294,10 +383,9 @@ class UserSeeder extends Seeder
         }
     }
 
-    private function addDoc($proyek, $type, $name, $uploader, $verifier = null, $status = 'terverifikasi')
+    private function addDoc($properti, $type, $name, $uploader, $verifier = null, $status = 'terverifikasi')
     {
-        $path = $this->genPdf($name, $proyek->nama_proyek, 'dokumen');
-        $properti = $proyek->properti;
+        $path = $this->genPdf($name, $properti->proyek->nama_proyek, 'dokumen');
 
         DokumenProperti::create([
             'properti_id' => $properti->id,
@@ -340,6 +428,28 @@ class UserSeeder extends Seeder
         ]);
     }
 
+    /**
+     * Add an optional (standalone) aspek fisik — not tied to a checklist item.
+     */
+    private function addOptionalAspekFisik($properti, $nama, $deskripsi, $creator, $verifier, $status, $lat, $lng)
+    {
+        return AspekFisik::create([
+            'properti_id' => $properti->id,
+            'checklist_fisik_id' => null,
+            'nama_aspek' => $nama,
+            'deskripsi' => $deskripsi,
+            'foto_paths' => [$this->genPlaceholderFoto()],
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'tipe' => 'opsional',
+            'status' => $status,
+            'created_by' => $creator->id,
+            'verified_by' => $verifier->id,
+            'verified_at' => $status === 'terverifikasi' ? now() : null,
+            'catatan' => $status === 'terverifikasi' ? 'Diverifikasi.' : null,
+        ]);
+    }
+
     private function addNilai($properti, $nilaiAmount, $catatan, $creator)
     {
         return Nilai::create([
@@ -352,21 +462,22 @@ class UserSeeder extends Seeder
 
     private function genPlaceholderFoto()
     {
-        $filename = 'aspek-fisik/placeholder_' . uniqid() . '.jpg';
+        $filename = 'aspek-fisik/placeholder_'.uniqid().'.jpg';
         // Minimal valid JPEG (1x1 pixel, gray) — base64 encoded
         $minimalJpeg = base64_decode(
             '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AKwA//9k='
         );
         Storage::disk('public')->put($filename, $minimalJpeg);
+
         return $filename;
     }
 
     private function genPdf($type, $projectName, $folder)
     {
         $safeType = preg_replace('/[^a-z0-9_\-]/', '_', strtolower($type));
-        $filename = "{$folder}/" . $safeType . "_" . uniqid() . ".pdf";
+        $filename = "{$folder}/".$safeType.'_'.uniqid().'.pdf';
 
-        $pdf = new \FPDF();
+        $pdf = new \FPDF;
         $pdf->AddPage();
         $pdf->SetFont('Arial', 'B', 20);
         $pdf->SetTextColor(130, 193, 125); // #82C17D

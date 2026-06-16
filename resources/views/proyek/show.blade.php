@@ -1,4 +1,5 @@
 <x-app-layout>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <div class="min-h-screen bg-gray-50 pb-12">
         <div class="max-w-7xl mx-auto px-6 py-8">
             <!-- Back link + Project title -->
@@ -10,7 +11,7 @@
                 <div class="flex justify-between items-start">
                     <div>
                         <h1 class="text-3xl font-bold text-gray-800">{{ $proyek->nama_proyek }}</h1>
-                        <p class="text-sm text-gray-500 mt-1">Dibuat oleh: {{ $proyek->creator?->name ?? '-' }}</p>
+                        <p class="text-sm text-gray-500 mt-1">Dibuat oleh: {{ $proyek->creator?->name ?? '-' }} ({{ $proyek->creator?->username ?? '-' }})</p>
                     </div>
                     <div class="flex flex-col items-end gap-2">
                         <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
@@ -22,9 +23,7 @@
                             {{ $proyek->status === 'aktif' ? 'Aktif' : $proyek->status }}
                         </span>
                         @if($proyek->properti)
-                            @php
-                                $typeReqs = \App\Services\DocumentRequirementService::getTypeRequirements($proyek->properti->tipe_properti);
-                            @endphp
+                            @php $typeReqs = \App\Services\DocumentRequirementService::getTypeRequirements($proyek->properti->tipe_properti); @endphp
                             <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-[#82C17D]/10 text-[#82C17D] uppercase tracking-wider border border-[#82C17D]/20">
                                 🏠 {{ $typeReqs['name'] ?? 'Tipe Tidak Diketahui' }}
                             </span>
@@ -42,44 +41,78 @@
                         <h4 class="font-bold text-gray-800 text-sm mb-3">Info Proyek</h4>
                         <div class="space-y-3 text-sm">
                             @php
-                                $phaseLabels = [
-                                    'dimulai' => 'Proyek Dimulai',
-                                    'dokumen' => 'Dokumen Diverifikasi',
-                                    'fisik' => 'Fisik Diverifikasi',
-                                    'dinilai' => 'Properti Dinilai',
-                                    'selesai' => 'Proyek Selesai',
-                                ];
-                                $currentPhaseLabel = $phaseLabels[$proyek->current_phase ?? 'dimulai'] ?? 'Proyek Dimulai';
+                                $phaseLabels = ['dimulai' => 'Proyek Mulai', 'dokumen' => 'Verifikasi Dokumen', 'fisik' => 'Verifikasi Fisik', 'dinilai' => 'Penilaian Properti', 'selesai' => 'Proyek Selesai'];
+                                $currentPhaseLabel = $phaseLabels[$proyek->current_phase ?? 'dokumen'] ?? 'Proyek Mulai';
+                                $task = $proyek->getCurrentTask();
+                                $collectionStatus = $proyek->getCurrentCollection()?->status;
+                                $phaseColor = match($proyek->current_phase ?? 'dokumen') { 'dokumen' => 'blue', 'fisik' => 'yellow', 'dinilai' => 'purple', 'selesai' => 'green', default => 'gray' };
                             @endphp
                             <div>
                                 <span class="text-gray-400 text-[10px] uppercase font-bold tracking-widest block mb-1">Status</span>
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
-                                    @if(($proyek->current_phase ?? 'dimulai') === 'selesai') bg-green-100 text-green-700
-                                    @elseif(($proyek->current_phase ?? 'dimulai') === 'dinilai') bg-purple-100 text-purple-700
-                                    @elseif(($proyek->current_phase ?? 'dimulai') === 'fisik') bg-yellow-100 text-yellow-700
-                                    @elseif(($proyek->current_phase ?? 'dimulai') === 'dokumen') bg-blue-100 text-blue-700
+                                    @if(($proyek->current_phase ?? 'dokumen') === 'selesai') bg-green-100 text-green-700
+                                    @elseif(($proyek->current_phase ?? 'dokumen') === 'dinilai') bg-purple-100 text-purple-700
+                                    @elseif(($proyek->current_phase ?? 'dokumen') === 'fisik') bg-yellow-100 text-yellow-700
+                                    @elseif(($proyek->current_phase ?? 'dokumen') === 'dokumen') bg-blue-100 text-blue-700
                                     @else bg-gray-100 text-gray-600
                                     @endif">
                                     {{ $currentPhaseLabel }}
                                 </span>
                             </div>
-                            <div>
-                                <span class="text-gray-400 text-[10px] uppercase font-bold tracking-widest block mb-1">Durasi</span>
-                                <span class="text-gray-800 font-bold">{{ $proyek->start_date->format('d M Y') }} - {{ $proyek->due_date->format('d M Y') }}</span>
-                            </div>
-                            <div>
-                                <span class="text-gray-400 text-[10px] uppercase font-bold tracking-widest block mb-1">Peserta</span>
-                                <span class="text-gray-800 font-bold">{{ $proyek->users->count() }} orang terlibat</span>
-                            </div>
-                            @if($proyek->kontrak_file)
-                            <div class="pt-2">
-                                <a href="{{ asset('storage/' . $proyek->kontrak_file) }}" target="_blank"
-                                    class="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded-xl text-[#82C17D] font-bold text-xs transition border border-gray-100">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                    Lihat Berkas Kontrak
-                                </a>
-                            </div>
+
+                            @if($proyek->current_phase !== 'selesai' && $task)
+                                <div class="rounded-[16px] p-3 border
+                                    @switch($phaseColor)
+                                        @case('blue') bg-blue-50/50 border-blue-100 @break
+                                        @case('yellow') bg-yellow-50/50 border-yellow-100 @break
+                                        @case('purple') bg-purple-50/50 border-purple-100 @break
+                                        @default bg-gray-50 border-gray-100
+                                    @endswitch">
+                                    <div class="flex items-start gap-2.5">
+                                        <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0
+                                            @switch($phaseColor)
+                                                @case('blue') bg-blue-100 text-blue-600 @break
+                                                @case('yellow') bg-yellow-100 text-yellow-600 @break
+                                                @case('purple') bg-purple-100 text-purple-600 @break
+                                                @default bg-gray-100 text-gray-600
+                                            @endswitch">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider
+                                                @switch($phaseColor)
+                                                    @case('blue') bg-blue-100 text-blue-700 @break
+                                                    @case('yellow') bg-yellow-100 text-yellow-700 @break
+                                                    @case('purple') bg-purple-100 text-purple-700 @break
+                                                    @default bg-gray-100 text-gray-700
+                                                @endswitch">
+                                                {{ $task['role'] }}
+                                            </span>
+                                            <p class="text-gray-600 text-xs mt-1 leading-relaxed">{{ $task['message'] }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                @if($collectionStatus === 'selesai')
+                                <div class="mt-2">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-50 text-green-700 border border-green-100">✓ {{ $phaseLabels[$proyek->current_phase] ?? '' }} Selesai</span>
+                                </div>
+                                @endif
+
+                                {{-- Action buttons moved to respective content panels --}}
                             @endif
+
+                            @if($proyek->current_phase === 'selesai')
+                                <div class="rounded-[16px] p-3 bg-green-50/50 border border-green-100">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        </div>
+                                        <span class="text-sm font-bold text-green-700">Proyek Selesai</span>
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- Kontrak link moved to Detail tab --}}
                         </div>
                     </div>
 
@@ -89,26 +122,10 @@
                             <h3 class="font-bold text-gray-800 text-[11px] uppercase tracking-widest">Menu Proyek</h3>
                         </div>
                         <nav class="p-2">
-                            <a href="{{ route('proyek.show', ['proyek' => $proyek->id, 'menu' => 'detail']) }}"
-                                class="block px-4 py-3 rounded-[12px] text-sm font-bold transition
-                                {{ $activeMenu === 'detail' ? 'bg-[#82C17D] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50' }}">
-                                ℹ️ Detail
-                            </a>
-                            <a href="{{ route('proyek.show', ['proyek' => $proyek->id, 'menu' => 'dokumen']) }}"
-                                class="block px-4 py-3 rounded-[12px] text-sm font-bold transition
-                                {{ $activeMenu === 'dokumen' ? 'bg-[#82C17D] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50' }}">
-                                📄 Dokumen
-                            </a>
-                            <a href="{{ route('proyek.show', ['proyek' => $proyek->id, 'menu' => 'fisik']) }}"
-                                class="block px-4 py-3 rounded-[12px] text-sm font-bold transition
-                                {{ $activeMenu === 'fisik' ? 'bg-[#82C17D] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50' }}">
-                                🏠 Fisik
-                            </a>
-                            <a href="{{ route('proyek.show', ['proyek' => $proyek->id, 'menu' => 'nilai']) }}"
-                                class="block px-4 py-3 rounded-[12px] text-sm font-bold transition
-                                {{ $activeMenu === 'nilai' ? 'bg-[#82C17D] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50' }}">
-                                📊 Nilai
-                            </a>
+                            <a href="{{ route('proyek.show', ['proyek' => $proyek->id, 'menu' => 'detail']) }}" class="block px-4 py-3 rounded-[12px] text-sm font-bold transition {{ $activeMenu === 'detail' ? 'bg-[#82C17D] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50' }}">ℹ️ Detail</a>
+                            <a href="{{ route('proyek.show', ['proyek' => $proyek->id, 'menu' => 'dokumen']) }}" class="block px-4 py-3 rounded-[12px] text-sm font-bold transition {{ $activeMenu === 'dokumen' ? 'bg-[#82C17D] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50' }}">📄 Dokumen</a>
+                            <a href="{{ route('proyek.show', ['proyek' => $proyek->id, 'menu' => 'fisik']) }}" class="block px-4 py-3 rounded-[12px] text-sm font-bold transition {{ $activeMenu === 'fisik' ? 'bg-[#82C17D] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50' }}">🏠 Fisik</a>
+                            <a href="{{ route('proyek.show', ['proyek' => $proyek->id, 'menu' => 'nilai']) }}" class="block px-4 py-3 rounded-[12px] text-sm font-bold transition {{ $activeMenu === 'nilai' ? 'bg-[#82C17D] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50' }}">📊 Nilai</a>
                         </nav>
                     </div>
                 </div>
@@ -117,21 +134,14 @@
                 <div class="flex-1">
                     <div class="bg-white p-8 rounded-[40px] shadow-[0_20px_40px_rgba(0,0,0,0.04)] min-h-[500px]">
 
+                        {{-- ==================== DETAIL TAB ==================== --}}
                         @if($activeMenu === 'detail')
-                            <!-- DETAIL CONTENT -->
                             <h2 class="text-xl font-bold text-gray-800 mb-6">Detail Penilaian</h2>
                             <p class="text-gray-500 mb-6">Informasi identitas dan kontrak proyek.</p>
 
-                            <!-- Project Details Grid -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Informasi Umum (includes deskripsi) -->
                                 <div class="border border-gray-100 rounded-[30px] p-6">
-                                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                        Informasi Umum
-                                    </h3>
+                                    <h3 class="font-bold text-gray-800 mb-4">Informasi Umum</h3>
                                     <div class="space-y-4">
                                         <div>
                                             <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Nama Proyek</label>
@@ -160,898 +170,382 @@
                                     </div>
                                 </div>
 
-                                <!-- Participants -->
                                 <div class="border border-gray-100 rounded-[30px] p-6">
-                                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-3-3h-4m1-4a4 4 0 11-8 0 4 4 0 018 0zm12 0a4 4 0 11-8 0 4 4 0 018 0z"/>
-                                        </svg>
-                                        Peserta Terlibat
-                                    </h3>
-                                    <div class="space-y-4">
-                                        @php
-                                            $karyawans = $proyek->users->where('role', 'karyawan');
-                                            $clients = $proyek->users->where('role', 'client');
-                                            $mitras = $proyek->users->where('role', 'mitra');
-                                        @endphp
-
-                                        @if($karyawans->isNotEmpty())
-                                            <div>
-                                                <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Internal (Karyawan)</p>
-                                                <div class="space-y-4">
-                                                    @foreach($karyawans as $userList)
-                                                        <div class="flex items-center gap-3">
-                                                            @if($userList->profile_photo)
-                                                                <img src="{{ $userList->profile_photo_url }}" alt="{{ $userList->name }}" class="w-[42px] h-[42px] rounded-full object-cover shrink-0">
-                                                            @else
-                                                                <div class="w-[42px] h-[42px] rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700 uppercase shrink-0">
-                                                                    {{ substr($userList->name, 0, 1) }}
-                                                                </div>
-                                                            @endif
-                                                            <div class="min-w-0">
-                                                                <p class="text-gray-800 font-semibold text-sm truncate">{{ $userList->name }}</p>
-                                                                <p class="text-[10px] text-gray-400 font-bold tracking-widest truncate">{{ $userList->username }}</p>
-                                                            </div>
-                                                        </div>
-                                                    @endforeach
-                                                </div>
+                                    <h3 class="font-bold text-gray-800 mb-4">Peserta Terlibat</h3>
+                                    @php
+                                        $karyawans = $proyek->users->where('role', 'karyawan');
+                                        $clients = $proyek->users->where('role', 'client');
+                                        $mitras = $proyek->users->where('role', 'mitra');
+                                    @endphp
+                                    @if($karyawans->isNotEmpty())
+                                        <div class="mb-4">
+                                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Internal (Karyawan)</p>
+                                            @foreach($karyawans as $u)
+                                            <div class="flex items-center gap-3 mb-2">
+                                                @if($u->profile_photo)<img src="{{ $u->profile_photo_url }}" class="w-[42px] h-[42px] rounded-full object-cover shrink-0">@else<div class="w-[42px] h-[42px] rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700 uppercase shrink-0">{{ substr($u->name, 0, 1) }}</div>@endif
+                                                <div><p class="text-gray-800 font-semibold text-sm">{{ $u->name }}</p><p class="text-[10px] text-gray-400">{{ $u->username }}</p></div>
                                             </div>
-                                        @endif
-
-                                        @if($clients->isNotEmpty())
-                                            <div>
-                                                <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Eksternal (Klien)</p>
-                                                <div class="space-y-4">
-                                                    @foreach($clients as $userList)
-                                                        <div class="flex items-center gap-3">
-                                                            @if($userList->profile_photo)
-                                                                <img src="{{ $userList->profile_photo_url }}" alt="{{ $userList->name }}" class="w-[42px] h-[42px] rounded-full object-cover shrink-0">
-                                                            @else
-                                                                <div class="w-[42px] h-[42px] rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700 uppercase shrink-0">
-                                                                    {{ substr($userList->name, 0, 1) }}
-                                                                </div>
-                                                            @endif
-                                                            <div class="min-w-0">
-                                                                <p class="text-gray-800 font-semibold text-sm truncate">{{ $userList->name }}</p>
-                                                                <p class="text-[10px] text-gray-400 font-bold tracking-widest truncate">{{ $userList->username }}</p>
-                                                            </div>
-                                                        </div>
-                                                    @endforeach
-                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                    @if($clients->isNotEmpty())
+                                        <div class="mb-4">
+                                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Eksternal (Klien)</p>
+                                            @foreach($clients as $u)
+                                            <div class="flex items-center gap-3 mb-2">
+                                                @if($u->profile_photo)<img src="{{ $u->profile_photo_url }}" class="w-[42px] h-[42px] rounded-full object-cover shrink-0">@else<div class="w-[42px] h-[42px] rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700 uppercase shrink-0">{{ substr($u->name, 0, 1) }}</div>@endif
+                                                <div><p class="text-gray-800 font-semibold text-sm">{{ $u->name }}</p><p class="text-[10px] text-gray-400">{{ $u->username }}</p></div>
                                             </div>
-                                        @endif
-
-                                        @if($mitras->isNotEmpty())
-                                            <div>
-                                                <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Partner (Mitra)</p>
-                                                <div class="space-y-4">
-                                                    @foreach($mitras as $userList)
-                                                        <div class="flex items-center gap-3">
-                                                            @if($userList->profile_photo)
-                                                                <img src="{{ $userList->profile_photo_url }}" alt="{{ $userList->name }}" class="w-[42px] h-[42px] rounded-full object-cover shrink-0">
-                                                            @else
-                                                                <div class="w-[42px] h-[42px] rounded-full bg-yellow-100 flex items-center justify-center text-xs font-bold text-yellow-700 uppercase shrink-0">
-                                                                    {{ substr($userList->name, 0, 1) }}
-                                                                </div>
-                                                            @endif
-                                                            <div class="min-w-0">
-                                                                <p class="text-gray-800 font-semibold text-sm truncate">{{ $userList->name }}</p>
-                                                                <p class="text-[10px] text-gray-400 font-bold tracking-widest truncate">{{ $userList->username }}</p>
-                                                            </div>
-                                                        </div>
-                                                    @endforeach
-                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                    @if($mitras->isNotEmpty())
+                                        <div>
+                                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Partner (Mitra)</p>
+                                            @foreach($mitras as $u)
+                                            <div class="flex items-center gap-3 mb-2">
+                                                @if($u->profile_photo)<img src="{{ $u->profile_photo_url }}" class="w-[42px] h-[42px] rounded-full object-cover shrink-0">@else<div class="w-[42px] h-[42px] rounded-full bg-yellow-100 flex items-center justify-center text-xs font-bold text-yellow-700 uppercase shrink-0">{{ substr($u->name, 0, 1) }}</div>@endif
+                                                <div><p class="text-gray-800 font-semibold text-sm">{{ $u->name }}</p><p class="text-[10px] text-gray-400">{{ $u->username }}</p></div>
                                             </div>
-                                        @endif
-                                    </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
 
                             <!-- Progress Stepper -->
                             @php
-                                $steps = [
-                                    ['label' => 'Proyek Dimulai', 'key' => 'dimulai'],
-                                    ['label' => 'Dokumen Diverifikasi', 'key' => 'dokumen'],
-                                    ['label' => 'Fisik Diverifikasi', 'key' => 'fisik'],
-                                    ['label' => 'Properti Dinilai', 'key' => 'dinilai'],
-                                    ['label' => 'Proyek Selesai', 'key' => 'selesai'],
-                                ];
+                                $steps = [['label' => 'Proyek Mulai', 'key' => 'dimulai'], ['label' => 'Verifikasi Dokumen', 'key' => 'dokumen'], ['label' => 'Verifikasi Fisik', 'key' => 'fisik'], ['label' => 'Penilaian Properti', 'key' => 'dinilai'], ['label' => 'Proyek Selesai', 'key' => 'selesai']];
                                 $currentPhase = $proyek->current_phase ?? 'dimulai';
                                 $phaseOrder = ['dimulai', 'dokumen', 'fisik', 'dinilai', 'selesai'];
                                 $currentIdx = array_search($currentPhase, $phaseOrder);
                                 if ($currentIdx === false) $currentIdx = 0;
+                                $isFinished = $currentPhase === 'selesai';
                             @endphp
                             <div class="mt-6 border border-gray-100 rounded-[30px] p-6">
-                                <h3 class="font-bold text-gray-800 mb-5 flex items-center gap-2">
-                                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                                    </svg>
-                                    Progress Proyek
-                                </h3>
+                                <h3 class="font-bold text-gray-800 mb-5">Progress Proyek</h3>
                                 <div class="flex items-start">
                                     @foreach($steps as $idx => $step)
                                         @php
-                                            $isCompleted = $idx < $currentIdx;
-                                            $isCurrent = $idx === $currentIdx;
-                                            $isFuture = $idx > $currentIdx;
+                                            $isLast = $idx === count($steps) - 1;
+                                            $isCompleted = $isLast ? $isFinished : $idx < $currentIdx;
+                                            $isCurrent = $isLast ? false : $idx === $currentIdx;
+                                            $isFuture = $isLast ? !$isFinished : $idx > $currentIdx;
                                         @endphp
                                         <div class="flex-1 flex flex-col items-center relative">
-                                            @if($idx > 0)
-                                                <div class="absolute top-[18px] right-1/2 w-full h-0.5 -z-10 {{ $idx <= $currentIdx ? 'bg-[#82C17D]' : 'bg-gray-200' }}"></div>
-                                            @endif
-                                            @if($idx < count($steps) - 1)
-                                                <div class="absolute top-[18px] left-1/2 w-full h-0.5 -z-10 {{ $isCompleted ? 'bg-[#82C17D]' : 'bg-gray-200' }}"></div>
-                                            @endif
-                                            <div class="relative z-10 flex items-center justify-center w-9 h-9 rounded-full border-2 transition-all duration-300
-                                                {{ $isCompleted ? 'bg-[#82C17D] border-[#82C17D] shadow-md shadow-[#82C17D]/20' : '' }}
-                                                {{ $isCurrent ? 'bg-white border-[#82C17D] shadow-md shadow-[#82C17D]/15 ring-4 ring-[#82C17D]/10' : '' }}
-                                                {{ $isFuture ? 'bg-white border-gray-200' : '' }}
-                                            ">
-                                                @if($isCompleted)
-                                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                                @elseif($isCurrent)
-                                                    <span class="text-sm font-bold text-[#82C17D]">{{ $idx + 1 }}</span>
-                                                @else
-                                                    <span class="text-xs font-medium text-gray-400">{{ $idx + 1 }}</span>
-                                                @endif
+                                            @if($idx > 0)<div class="absolute top-[18px] right-1/2 w-full h-0.5 -z-10 {{ $isCompleted || $isCurrent ? 'bg-[#82C17D]' : 'bg-gray-200' }}"></div>@endif
+                                            @if($idx < count($steps) - 1)<div class="absolute top-[18px] left-1/2 w-full h-0.5 -z-10 {{ $isCompleted ? 'bg-[#82C17D]' : 'bg-gray-200' }}"></div>@endif
+                                            <div class="relative z-10 flex items-center justify-center w-9 h-9 rounded-full border-2 {{ $isCompleted ? 'bg-[#82C17D] border-[#82C17D]' : '' }} {{ $isCurrent ? 'bg-white border-[#82C17D] ring-4 ring-[#82C17D]/10' : '' }} {{ $isFuture ? 'bg-white border-gray-200' : '' }}">
+                                                @if($isCompleted)<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                                @elseif($isCurrent)<span class="text-sm font-bold text-[#82C17D]">{{ $idx + 1 }}</span>
+                                                @else<span class="text-xs font-medium text-gray-400">{{ $idx + 1 }}</span>@endif
                                             </div>
-                                            <span class="mt-3 text-[11px] font-semibold text-center leading-tight max-w-[90px]
-                                                {{ $isCompleted ? 'text-[#82C17D]' : '' }}
-                                                {{ $isCurrent ? 'text-gray-800' : '' }}
-                                                {{ $isFuture ? 'text-gray-400' : '' }}
-                                            ">{{ $step['label'] }}</span>
+                                            <span class="mt-3 text-[11px] font-semibold text-center leading-tight max-w-[90px] {{ $isCompleted ? 'text-[#82C17D]' : '' }} {{ $isCurrent ? 'text-gray-800' : '' }} {{ $isFuture ? 'text-gray-400' : '' }}">{{ $step['label'] }}</span>
                                         </div>
                                     @endforeach
                                 </div>
                             </div>
 
                             <div class="border border-gray-100 rounded-[30px] p-6 mt-6 bg-gray-50/30">
-                                <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                    </svg>
-                                    Dibuat Oleh
-                                </h3>
+                                <h3 class="font-bold text-gray-800 mb-4">Dibuat Oleh</h3>
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-bold text-gray-600 uppercase">
-                                        {{ substr($proyek->creator?->name ?? '-', 0, 1) }}
-                                    </div>
-                                    <div>
-                                        <p class="text-gray-800 font-bold text-sm">{{ $proyek->creator?->name ?? '-' }}</p>
-                                        <p class="text-gray-400 text-xs">{{ $proyek->creator?->email ?? '-' }}</p>
+                                    <x-profile-avatar :user="$proyek->creator" size="md" />
+                                    <div><p class="text-gray-800 font-bold text-sm">{{ $proyek->creator?->name ?? '-' }}</p><p class="text-gray-400 text-xs">{{ $proyek->creator?->username ?? '-' }}</p></div>
+                                </div>
+                            </div>
 
+                        {{-- ==================== DOKUMEN TAB ==================== --}}
                         @elseif($activeMenu === 'dokumen')
-                            <!-- DOKUMEN CONTENT -->
+                            @php
+                                // Compute tipe options early so they're available for the JS outside this block
+                                $tipeOptionsForJs = [];
+                                if ($proyek->properti) {
+                                    $typeReqsForJs = \App\Services\DocumentRequirementService::getTypeRequirements($proyek->properti->tipe_properti);
+                                    $globalReqsForJs = \App\Services\DocumentRequirementService::getGlobalRequirements();
+                                    $globalOptionalForJs = \App\Services\DocumentRequirementService::getGlobalOptionalRequirements();
+                                    $tipeOptionsForJs = array_merge($globalReqsForJs, $typeReqsForJs['mandatory'] ?? [], $typeReqsForJs['optional'] ?? [], $globalOptionalForJs);
+                                    $tipeOptionsForJs['opsional'] = 'Opsional';
+                                }
+                            @endphp
                             @if(!$proyek->properti)
                                 <div class="bg-red-50 border border-red-100 text-red-700 p-6 rounded-[30px] text-center">
-                                    <svg class="w-12 h-12 mx-auto mb-3 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                                     <h3 class="font-bold text-lg">Properti Tidak Ditemukan</h3>
-                                    <p class="text-sm opacity-80">Wadah properti untuk proyek ini belum terinisialisasi. Silakan hubungi Admin.</p>
                                 </div>
                             @else
                                 @php
+                                    $koleksiDokumen = $proyek->properti->koleksiDokumen;
                                     $typeReqs = \App\Services\DocumentRequirementService::getTypeRequirements($proyek->properti->tipe_properti);
                                     $globalReqs = \App\Services\DocumentRequirementService::getGlobalRequirements();
-                                    $canProceed = \App\Services\DocumentRequirementService::canProceed($proyek->properti);
                                     $verifiedTypes = $proyek->properti->dokumens->where('status', 'terverifikasi')->pluck('tipe_dokumen')->toArray();
-                                @endphp
-
-                                <div class="flex justify-between items-start mb-8">
-                                    <div>
-                                        <h2 class="text-xl font-bold text-gray-800">Dokumen Properti</h2>
-                                        <p class="text-gray-500 text-sm mt-1">Tipe Objek: <span class="font-bold text-[#82C17D]">{{ $typeReqs['name'] ?? 'Tidak Diketahui' }}</span></p>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        @if(auth()->user()->isAdmin())
-                                            <button onclick="document.getElementById('typeModal').classList.remove('hidden')"
-                                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-xs font-bold transition">
-                                                ⚙️ Ubah Tipe
-                                            </button>
-                                        @endif
-                                        @if(auth()->user()->role === 'client' || auth()->user()->role === 'karyawan')
-                                            <button onclick="document.getElementById('uploadModal').classList.remove('hidden')"
-                                                class="bg-[#82C17D] hover:bg-[#6fa86a] text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-md transition flex items-center gap-2">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                                Unggah Dokumen
-                                            </button>
-                                        @endif
-                                    </div>
-                                </div>
-
-                                <!-- Gating Warning -->
-                                @if(!$canProceed)
-                                    <div class="bg-yellow-50 border border-yellow-100 text-yellow-800 p-4 rounded-[20px] mb-8 flex items-start gap-3">
-                                        <svg class="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                        <div>
-                                            <p class="text-sm font-bold">Verifikasi Fisik Terkunci</p>
-                                            <p class="text-xs opacity-80">Beberapa dokumen wajib belum diunggah atau belum diverifikasi oleh Karyawan.</p>
-                                        </div>
-                                    </div>
-                                @else
-                                    <div class="bg-green-50 border border-green-100 text-green-800 p-4 rounded-[20px] mb-8 flex items-start gap-3">
-                                        <svg class="w-5 h-5 text-green-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        <div>
-                                            <p class="text-sm font-bold">Dokumen Lengkap</p>
-                                            <p class="text-xs opacity-80">Proyek siap dilanjutkan ke Fase 2: Verifikasi Fisik.</p>
-                                        </div>
-                                    </div>
-                                @endif
-
-                                <!-- Document Checklist — merged single column -->
-                                @php
                                     $allMandatory = array_merge($globalReqs, $typeReqs['mandatory'] ?? []);
                                 @endphp
-                                <div class="mb-8">
-                                    <div class="flex items-center gap-2 mb-4">
-                                        <div class="w-1.5 h-6 rounded-full bg-[#82C17D]"></div>
-                                        <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider">Dokumen Wajib</h3>
-                                        <span class="ml-auto text-xs text-gray-400 font-medium">{{ count(array_intersect(array_keys($allMandatory), $verifiedTypes)) }} / {{ count($allMandatory) }} terpenuhi</span>
-                                    </div>
-                                    <div class="bg-gray-50/70 rounded-[20px] p-5 space-y-1">
+
+                                <h2 class="text-xl font-bold text-gray-800 mb-2">Dokumen Properti</h2>
+                                <p class="text-gray-500 text-sm mb-6">Kelola dan verifikasi dokumen properti untuk proyek ini.</p>
+
+                                {{-- Dokumen Wajib --}}
+                                <div class="mb-6">
+                                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">Dokumen Wajib</h3>
+                                    <div class="bg-gray-50/70 rounded-[20px] p-4 space-y-1">
                                         @foreach($allMandatory as $key => $label)
-                                            @php $isVerified = in_array($key, $verifiedTypes); @endphp
-                                            <label class="flex items-center gap-3 py-2.5 px-3 rounded-[12px] transition cursor-default {{ $isVerified ? 'bg-green-50/80' : 'hover:bg-gray-100/60' }}">
-                                                <span class="relative flex items-center justify-center w-5 h-5 shrink-0">
-                                                    @if($isVerified)
-                                                        <span class="w-5 h-5 rounded-md bg-[#82C17D] flex items-center justify-center shadow-sm">
-                                                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                                                        </span>
-                                                    @else
-                                                        <span class="w-5 h-5 rounded-md border-2 border-gray-300 bg-white"></span>
-                                                    @endif
-                                                </span>
-                                                <span class="text-sm {{ $isVerified ? 'text-gray-800 font-semibold' : 'text-gray-500' }}">{{ $label }}</span>
-                                            </label>
+                                        <label class="flex items-center gap-3 py-2 px-3 rounded-[12px] {{ in_array($key, $verifiedTypes) ? 'bg-green-50/80' : '' }}">
+                                            <span class="w-5 h-5 rounded-md {{ in_array($key, $verifiedTypes) ? 'bg-[#82C17D]' : 'border-2 border-gray-300 bg-white' }} shrink-0 flex items-center justify-center">
+                                                @if(in_array($key, $verifiedTypes))<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>@endif
+                                            </span>
+                                            <span class="text-sm {{ in_array($key, $verifiedTypes) ? 'text-gray-800 font-semibold' : 'text-gray-500' }}">{{ $label }}</span>
+                                        </label>
                                         @endforeach
                                     </div>
                                 </div>
 
-                                <!-- Documents List -->
-                                <div class="space-y-4">
-                                    @forelse($proyek->properti->dokumens as $dokumen)
-                                        <div class="border border-gray-100 rounded-[20px] p-5 hover:border-[#82C17D]/30 transition group">
-                                            <div class="flex justify-between items-center">
-                                                <div class="flex items-center gap-4">
-                                                    <div class="w-12 h-12 rounded-[12px] bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[#82C17D]/5 group-hover:text-[#82C17D] transition">
-                                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                                    </div>
-                                                    <div>
-                                                        <h4 class="font-bold text-gray-800">{{ $dokumen->nama_dokumen }}</h4>
-                                                        <p class="text-xs text-gray-500">
-                                                            Uploaded by: {{ $dokumen->uploader?->name }} • {{ $dokumen->created_at->diffForHumans() }}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div class="flex items-center gap-3">
-                                                    <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
-                                                        @if($dokumen->status === 'menunggu') bg-yellow-100 text-yellow-700
-                                                        @elseif($dokumen->status === 'terverifikasi') bg-green-100 text-green-700
-                                                        @else bg-red-100 text-red-700
-                                                        @endif">
-                                                        {{ $dokumen->status }}
-                                                    </span>
-
-                                                    <a href="{{ asset('storage/' . $dokumen->file_path) }}" target="_blank"
-                                                        class="p-2 text-gray-400 hover:text-[#82C17D] hover:bg-gray-50 rounded-full transition" title="Lihat Dokumen">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                                    </a>
-
-                                                    @if(auth()->user()->role === 'karyawan' && $dokumen->status === 'menunggu')
-                                                        <button onclick="openVerifyModal({{ $dokumen->id }}, '{{ $dokumen->nama_dokumen }}')"
-                                                            class="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition" title="Verifikasi">
-                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                        </button>
-                                                    @endif
-
-                                                    @if($dokumen->uploaded_by === auth()->id() && $dokumen->status === 'menunggu')
-                                                        <form action="{{ route('dokumen.destroy', $dokumen->id) }}" method="POST" onsubmit="return confirm('Hapus dokumen ini?')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition" title="Hapus">
-                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                            </button>
-                                                        </form>
-                                                    @endif
-                                                </div>
-                                            </div>
-
-                                            @if($dokumen->catatan)
-                                                <div class="mt-3 p-3 bg-gray-50 rounded-[12px] text-xs text-gray-600 border-l-2 border-gray-200">
-                                                    <strong>Catatan:</strong> {{ $dokumen->catatan }}
-                                                </div>
-                                            @endif
-                                        </div>
-                                    @empty
-                                        <div class="bg-gray-50 rounded-[20px] p-12 text-center text-gray-400">
-                                            <svg class="w-12 h-12 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                                            </svg>
-                                            <p class="text-sm italic">Belum ada dokumen yang diunggah.</p>
-                                        </div>
-                                    @endforelse
-                                </div>
-                            @endif
-
-                        @elseif($activeMenu === 'fisik')
-                            <!-- FISIK CONTENT -->
-                            @php
-                                $checklistWajib = $proyek->properti->checklistFisiks ?? collect();
-                                $allAspekFisik = $proyek->properti->aspekFisiks ?? collect();
-                                $wajibFilled = $checklistWajib->filter(fn($c) => $c->verificationStatus() !== 'belum')->count();
-                                $wajibTotal = $checklistWajib->count();
-                                $allWajibVerified = $wajibTotal > 0 && $checklistWajib->every(fn($c) => $c->verificationStatus() === 'terverifikasi');
-                                $opsionalAspeks = $allAspekFisik->whereNull('checklist_fisik_id');
-                                $user = auth()->user();
-                                $canManage = $user->isKaryawan();
-                                $canFill = $user->isKaryawan() || $user->isMitra();
-                                $canVerify = $user->isKaryawan();
-                            @endphp
-
-                            <div class="flex justify-between items-start mb-6">
-                                <div>
-                                    <h2 class="text-xl font-bold text-gray-800">Fisik Properti</h2>
-                                    <p class="text-gray-500 text-sm mt-1">Kelola aspek fisik properti untuk proyek ini.</p>
-                                </div>
-                                @if($canFill)
-                                    <button onclick="openAddModal()" class="bg-[#82C17D] hover:bg-[#6fa86a] text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-md transition flex items-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                        Tambah Aspek Fisik
-                                    </button>
-                                @endif
-                            </div>
-
-                            <!-- Status Banner (matching Dokumen style exactly) -->
-                            @if($allWajibVerified)
-                                <div class="bg-green-50 border border-green-100 text-green-800 p-4 rounded-[20px] mb-8 flex items-start gap-3">
-                                    <svg class="w-5 h-5 text-green-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                    <div>
-                                        <p class="text-sm font-bold">Aspek Fisik Lengkap</p>
-                                        <p class="text-xs opacity-80">Proyek siap dilanjutkan ke Fase 3: Penilaian.</p>
+                                {{-- Dokumen --}}
+                                <div class="mb-6">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider">Dokumen</h3>
+                                        @if(auth()->user()->isClient() || auth()->user()->isKaryawan() || auth()->user()->isAdmin())
+                                        <button onclick="openDokumenCreateModal()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#82C17D] hover:bg-[#6fa86a] text-white rounded-full text-xs font-bold shadow-md transition">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                                            Tambah Dokumen
+                                        </button>
+                                        @endif
                                     </div>
-                                </div>
-                            @else
-                                <div class="bg-yellow-50 border border-yellow-100 text-yellow-800 p-4 rounded-[20px] mb-8 flex items-start gap-3">
-                                    <svg class="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                    <div>
-                                        <p class="text-sm font-bold">Aspek Fisik Belum Lengkap</p>
-                                        <p class="text-xs opacity-80">Beberapa aspek fisik wajib belum diverifikasi.</p>
-                                    </div>
-                                </div>
-                            @endif
-
-                            <!-- Aspek Fisik Wajib Checklist (matching Dokumen Wajib style) -->
-                            <div class="mb-8">
-                                <div class="flex items-center gap-2 mb-4">
-                                    <div class="w-1.5 h-6 rounded-full bg-[#82C17D]"></div>
-                                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider">Aspek Fisik Wajib</h3>
-                                    <span class="ml-auto text-xs text-gray-400 font-medium">{{ $checklistWajib->filter(fn($c) => $c->verificationStatus() === 'terverifikasi')->count() }} / {{ $wajibTotal }} terpenuhi</span>
-                                </div>
-                                <div class="bg-gray-50/70 rounded-[20px] p-5 space-y-1">
-                                    @forelse($checklistWajib as $item)
+                                    <div class="border border-gray-100 rounded-[20px] p-4">
                                         @php
-                                            $vStatus = $item->verificationStatus();
-                                            $isVerified = $vStatus === 'terverifikasi';
-                                            $isRejected = $vStatus === 'ditolak';
-                                            $isPending = $vStatus === 'menunggu';
-                                            $isBelum = $vStatus === 'belum';
-                                            $latestAspek = $item->aspekFisiks()->latest()->first();
+                                            $allReqs = array_merge($globalReqs, $typeReqs['mandatory'] ?? []);
+                                            $typeLabels = [];
+                                            foreach ($allReqs as $k => $v) { $typeLabels[$k] = $v; }
+                                            // Also add optional labels
+                                            if (isset($typeReqs['optional'])) {
+                                                foreach ($typeReqs['optional'] as $k => $v) { $typeLabels[$k] = $v; }
+                                            }
+                                            // Global optional
+                                            $globalOptional = \App\Services\DocumentRequirementService::getGlobalOptionalRequirements();
+                                            foreach ($globalOptional as $k => $v) { $typeLabels[$k] = $v; }
                                         @endphp
-                                        <label class="flex items-center gap-3 py-2.5 px-3 rounded-[12px] transition cursor-default {{ $isVerified ? 'bg-green-50/80' : 'hover:bg-gray-100/60' }}">
-                                            <span class="relative flex items-center justify-center w-5 h-5 shrink-0">
-                                                @if($isVerified)
-                                                    <span class="w-5 h-5 rounded-md bg-[#82C17D] flex items-center justify-center shadow-sm">
-                                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                                                    </span>
-                                                @elseif($isRejected)
-                                                    <span class="w-5 h-5 rounded-md border-2 border-red-400 bg-red-50 flex items-center justify-center">
-                                                        <svg class="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-                                                    </span>
-                                                @else
-                                                    <span class="w-5 h-5 rounded-md border-2 border-gray-300 bg-white"></span>
-                                                @endif
-                                            </span>
-                                            <span class="text-sm {{ $isVerified ? 'text-gray-800 font-semibold' : 'text-gray-500' }}">{{ $item->nama_item }}</span>
-                                        </label>
-                                    @empty
-                                        <p class="text-sm text-gray-400 italic text-center py-4">Belum ada checklist. Karyawan dapat menambahkan checklist aspek fisik wajib.</p>
-                                    @endforelse
-                                </div>
-                                @if($canManage)
-                                    <div class="mt-3">
-                                        <button type="button" onclick="openChecklistModal()" class="px-4 py-2 bg-[#82C17D] hover:bg-[#6fa86a] text-white rounded-full text-sm font-bold transition flex items-center gap-2">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                            Tambah Checklist
-                                        </button>
-                                    </div>
-                                @endif
-                            </div>
-
-                            <!-- Aspek Fisik List (matching Documents List style) -->
-                            <div class="space-y-4">
-                                @forelse($allAspekFisik->sortByDesc('created_at') as $aspek)
-                                    @php
-                                        $statusColors = [
-                                            'menunggu' => 'bg-yellow-100 text-yellow-700',
-                                            'terverifikasi' => 'bg-green-100 text-green-700',
-                                            'ditolak' => 'bg-red-100 text-red-700',
-                                        ];
-                                        $isWajib = $aspek->checklist_fisik_id !== null;
-                                        $tipeLabel = $isWajib ? 'Wajib' : 'Opsional';
-                                    @endphp
-                                    <div class="border border-gray-100 rounded-[20px] p-5 hover:border-[#82C17D]/30 transition group">
-                                        <div class="flex justify-between items-center">
-                                            <div class="flex items-center gap-4">
-                                                @if($aspek->foto_paths && count($aspek->foto_paths) > 0)
-                                                    <img src="{{ asset('storage/' . $aspek->foto_paths[0]) }}" alt="{{ $aspek->nama_aspek }}" class="w-12 h-12 rounded-[12px] object-cover shrink-0 cursor-pointer" onclick="openPhotoModal('{{ addslashes($aspek->nama_aspek) }}', {{ json_encode(array_map(fn($p) => asset('storage/' . $p), $aspek->foto_paths)) }})">
-                                                @else
-                                                    <div class="w-12 h-12 rounded-[12px] bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[#82C17D]/5 group-hover:text-[#82C17D] transition">
-                                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                                                    </div>
-                                                @endif
-                                                <div>
-                                                    <div class="flex items-center gap-2">
-                                                        <h4 class="font-bold text-gray-800">{{ $aspek->nama_aspek }}</h4>
-                                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider {{ $isWajib ? 'bg-red-50 text-red-600' : 'bg-yellow-50 text-yellow-600' }}">{{ $tipeLabel }}</span>
-                                                    </div>
-                                                    <p class="text-xs text-gray-500">
-                                                        Oleh: {{ $aspek->creator?->name ?? '-' }} • {{ $aspek->created_at->diffForHumans() }}
-                                                    </p>
-                                                </div>
+                                        @forelse($proyek->properti->dokumens as $dokumen)
+                                        @php
+                                            $tipeOptions = array_merge($globalReqs, $typeReqs['mandatory'] ?? [], $typeReqs['optional'] ?? [], $globalOptional ?? []);
+                                            $tipeOptions['opsional'] = 'Opsional';
+                                            $dokData = json_encode([
+                                                'id' => $dokumen->id,
+                                                'nama' => $dokumen->nama_dokumen,
+                                                'tipe' => $dokumen->tipe_dokumen,
+                                                'tipeLabel' => $typeLabels[$dokumen->tipe_dokumen] ?? $dokumen->tipe_dokumen,
+                                                'deskripsi' => $dokumen->deskripsi,
+                                                'catatan' => $dokumen->catatan,
+                                                'filePath' => asset('storage/' . $dokumen->file_path),
+                                                'status' => $dokumen->status,
+                                                'uploader' => $dokumen->uploader?->name ?? '-',
+                                                'createdAt' => $dokumen->created_at->format('d M Y H:i'),
+                                                'uploadedById' => $dokumen->uploaded_by,
+                                                'tipeOptions' => $tipeOptions,
+                                            ]);
+                                        @endphp
+                                        <div class="flex justify-between items-center py-2 {{ !$loop->last ? 'border-b border-gray-50' : '' }} cursor-pointer hover:bg-gray-50 rounded-[12px] px-2 -mx-2 transition" onclick='openDokumenModal({{ $dokData }})'>
+                                            <div>
+                                                <h4 class="font-bold text-gray-800 text-sm">{{ $dokumen->nama_dokumen }}</h4>
+                                                <p class="text-xs text-gray-500">By: {{ $dokumen->uploader?->name }} • {{ $dokumen->created_at->diffForHumans() }}</p>
                                             </div>
-                                            <div class="flex items-center gap-3">
-                                                <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider {{ $statusColors[$aspek->status] }}">{{ $aspek->status }}</span>
-
-                                                @if($aspek->latitude && $aspek->longitude)
-                                                    <a href="https://www.openstreetmap.org/?mlat={{ $aspek->latitude }}&mlon={{ $aspek->longitude }}#map=17/{{ $aspek->latitude }}/{{ $aspek->longitude }}" target="_blank" class="p-2 text-gray-400 hover:text-[#82C17D] hover:bg-gray-50 rounded-full transition" title="Lihat di Peta">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                                                    </a>
-                                                @endif
-
-                                                @if($canVerify && $aspek->status === 'menunggu')
-                                                    <button onclick="openVerifyModal({{ $aspek->id }}, '{{ addslashes($aspek->nama_aspek) }}')" class="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition" title="Verifikasi">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                    </button>
-                                                @endif
-                                                @if($canVerify && $aspek->status !== 'menunggu')
-                                                    <button onclick="openVerifyModal({{ $aspek->id }}, '{{ addslashes($aspek->nama_aspek) }}')" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition" title="Ubah Status">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                                    </button>
-                                                @endif
-
-                                                @if(($user->isKaryawan() || ($user->isMitra() && $aspek->created_by === $user->id)) && $aspek->status === 'menunggu')
-                                                    <button onclick="openEditAspekModal({{ $aspek->id }}, '{{ addslashes($aspek->nama_aspek) }}', '{{ addslashes($aspek->deskripsi ?? '') }}', '{{ $isWajib ? 'wajib' : 'opsional' }}', {{ $aspek->latitude ?? 'null' }}, {{ $aspek->longitude ?? 'null' }}, {{ json_encode($aspek->foto_paths ?? []) }}, {{ $aspek->checklist_fisik_id ?? 'null' }})" class="p-2 text-gray-400 hover:text-[#82C17D] hover:bg-gray-50 rounded-full transition" title="Edit">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                                    </button>
-                                                @endif
-
-                                                @if($user->isKaryawan())
-                                                    <form action="{{ route('aspek-fisik.destroy', $aspek->id) }}" method="POST" onsubmit="return confirm('Hapus aspek ini?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition" title="Hapus">
-                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                            </div>
+                                            <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider {{ $dokumen->status === 'terverifikasi' ? 'bg-green-100 text-green-700' : ($dokumen->status === 'menunggu' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">{{ $dokumen->status }}</span>
                                         </div>
-
-                                        @if($aspek->deskripsi)
-                                            <div class="mt-3 p-3 bg-gray-50 rounded-[12px] text-xs text-gray-600 border-l-2 border-gray-200">
-                                                {{ $aspek->deskripsi }}
-                                            </div>
-                                        @endif
-                                        @if($aspek->catatan)
-                                            <div class="mt-2 p-3 bg-gray-50 rounded-[12px] text-xs text-gray-600 border-l-2 border-gray-200">
-                                                <strong>Catatan:</strong> {{ $aspek->catatan }}
-                                            </div>
-                                        @endif
+                                        @empty
+                                        <p class="text-sm text-gray-400 italic text-center py-4">Belum ada dokumen yang diunggah.</p>
+                                        @endforelse
                                     </div>
-                                @empty
-                                    <div class="bg-gray-50 rounded-[20px] p-12 text-center text-gray-400">
-                                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                                        <p class="text-sm italic">Belum ada aspek fisik yang ditambahkan.</p>
-                                    </div>
-                                @endforelse
-                            </div>
-
-                            <!-- Peta Properti -->
-                            @php
-                                $mappedAspeks = $allAspekFisik->filter(fn($a) => $a->latitude && $a->longitude);
-                            @endphp
-                            @if($mappedAspeks->count() > 0)
-                                <div class="border border-gray-100 rounded-[20px] p-6 mt-6">
-                                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                                        Peta Properti
-                                    </h3>
-                                    <div id="petaProperti" class="w-full h-[350px] rounded-[16px] overflow-hidden border border-gray-200 z-0"></div>
                                 </div>
+
+                                {{-- Action --}}
+                                @if(auth()->user()->isKaryawan())
+                                <div class="mt-6 pt-4 border-t border-gray-100">
+                                    @if($proyek->current_phase === 'dokumen')
+                                    <form action="{{ route('proyek.selesai-verifikasi-dokumen', $proyek->id) }}" method="POST" onsubmit="return confirm('Yakin verifikasi dokumen sudah selesai? Fase akan berpindah ke Verifikasi Fisik.')">@csrf
+                                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-3 rounded-full text-sm font-bold shadow-md transition"
+                                            {{ ($koleksiDokumen && $koleksiDokumen->isAllVerified()) ? '' : 'disabled' }}>
+                                            Selesai Verifikasi Dokumen, Lanjut ke fase berikutnya
+                                        </button>
+                                    </form>
+                                    @if(!($koleksiDokumen && $koleksiDokumen->isAllVerified()))
+                                    <p class="text-xs text-gray-400 mt-2 text-center">Semua dokumen wajib harus diverifikasi terlebih dahulu.</p>
+                                    @endif
+                                    @else
+                                    <button type="button" disabled class="w-full bg-gray-300 text-white px-5 py-3 rounded-full text-sm font-bold shadow-md cursor-not-allowed">Selesai Verifikasi Dokumen, Lanjut ke fase berikutnya</button>
+                                    @endif
+                                </div>
+                                @endif
                             @endif
 
-                            <!-- CHECKLIST ADD MODAL -->
-                            <div id="checklistModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-                                <div class="bg-white rounded-[30px] w-full max-w-md shadow-2xl overflow-hidden">
-                                    <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-                                        <h3 class="font-bold text-xl text-gray-800" id="checklistModalTitle">Tambah Checklist</h3>
-                                        <button onclick="closeChecklistModal()" class="text-gray-400 hover:text-gray-600 transition">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                        </button>
-                                    </div>
-                                    <form action="{{ route('checklist-fisik.store', $proyek->properti->id) }}" method="POST" class="p-8 space-y-5" id="checklistForm">
-                                        @csrf
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Nama Item Checklist</label>
-                                            <input type="text" name="nama_item" id="checklistNamaInput" required placeholder="Contoh: Kondisi Atap" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 px-4 text-sm">
-                                            <input type="hidden" name="tipe" id="checklistTipeInput" value="wajib">
-                                        </div>
-                                        <div class="pt-2">
-                                            <button type="submit" class="w-full bg-[#82C17D] hover:bg-[#6fa86a] text-white py-3 rounded-full font-bold shadow-md transition">
-                                                Tambah Checklist
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <!-- ADD ASPEK MODAL (matching Upload Dokumen style) -->
-                            <div id="addModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-                                <div class="bg-white rounded-[30px] w-full max-w-md shadow-2xl overflow-hidden">
-                                    <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-                                        <h3 class="font-bold text-xl text-gray-800">Tambah Aspek Fisik</h3>
-                                        <button onclick="closeAddModal()" class="text-gray-400 hover:text-gray-600 transition">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                        </button>
-                                    </div>
-                                    <form id="addForm" action="{{ route('aspek-fisik.store', $proyek->properti->id) }}" method="POST" enctype="multipart/form-data" class="p-8 space-y-5">
-                                        @csrf
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Jenis Aspek</label>
-                                            <select name="checklist_fisik_id" id="addJenisSelect" required onchange="updateAddFormFromSelect(this)"
-                                                class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 px-4 text-sm font-medium text-gray-700">
-                                                <option value="" disabled selected>Pilih Jenis Aspek</option>
-                                                @php $hasUnfilledWajib = $checklistWajib->contains(fn($c) => $c->verificationStatus() === 'belum'); @endphp
-                                                @if($hasUnfilledWajib)
-                                                <optgroup label="Wajib">
-                                                    @foreach($checklistWajib as $item)
-                                                        @if($item->verificationStatus() === 'belum')
-                                                            <option value="{{ $item->id }}" data-nama="{{ $item->nama_item }}">{{ $item->nama_item }}</option>
-                                                        @endif
-                                                    @endforeach
-                                                </optgroup>
-                                                @endif
-                                                <optgroup label="Opsional">
-                                                    <option value="" data-nama="" data-tipe="opsional">Aspek Opsional</option>
-                                                </optgroup>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Nama Aspek</label>
-                                            <input type="text" name="nama_aspek" id="addNamaInput" placeholder="Contoh: Lantai Granit" required class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 px-4 text-sm">
-                                            <input type="hidden" name="tipe" id="addTipeInput" value="wajib">
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Deskripsi</label>
-                                            <textarea name="deskripsi" id="addDeskripsi" rows="3" placeholder="Deskripsi detail aspek fisik..." class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 px-4 text-sm"></textarea>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Foto (JPG/PNG)</label>
-                                            <input type="file" name="foto[]" multiple required accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#82C17D] file:text-white hover:file:bg-[#6FA86A] cursor-pointer">
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Lokasi (Peta Aspek)</label>
-                                            <div id="petaAspek" class="w-full h-[200px] rounded-[12px] overflow-hidden border border-gray-200 z-0 mb-2"></div>
-                                            <div class="flex gap-3">
-                                                <div class="flex-1">
-                                                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Latitude</label>
-                                                    <input type="text" name="latitude" id="inputLatitude" required step="any" placeholder="-6.xxxxxx" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2 px-3 text-sm">
-                                                </div>
-                                                <div class="flex-1">
-                                                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Longitude</label>
-                                                    <input type="text" name="longitude" id="inputLongitude" required step="any" placeholder="106.xxxxxx" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2 px-3 text-sm">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="pt-2">
-                                            <button type="submit" class="w-full bg-[#82C17D] hover:bg-[#6fa86a] text-white py-3 rounded-full font-bold shadow-md transition">
-                                                Tambah Aspek Fisik
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <!-- EDIT ASPEK MODAL -->
-                            <div id="editAspekModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-                                <div class="bg-white rounded-[30px] w-full max-w-md shadow-2xl overflow-hidden">
-                                    <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-                                        <h3 class="font-bold text-xl text-gray-800">Edit Aspek Fisik</h3>
-                                        <button onclick="closeEditAspekModal()" class="text-gray-400 hover:text-gray-600 transition">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                        </button>
-                                    </div>
-                                    <form id="editAspekForm" method="POST" enctype="multipart/form-data" class="p-8 space-y-5">
-                                        @csrf
-                                        @method('PUT')
-                                        <input type="hidden" name="checklist_fisik_id" id="editAspekChecklistId">
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Nama Aspek</label>
-                                            <input type="text" name="nama_aspek" id="editAspekNama" required class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 px-4 text-sm">
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Deskripsi</label>
-                                            <textarea name="deskripsi" id="editAspekDeskripsi" rows="3" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 px-4 text-sm"></textarea>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Foto Baru (kosongkan jika tidak diubah)</label>
-                                            <input type="file" name="foto[]" multiple accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#82C17D] file:text-white hover:file:bg-[#6FA86A] cursor-pointer">
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Lokasi (Peta Aspek)</label>
-                                            <div id="petaAspekEdit" class="w-full h-[200px] rounded-[12px] overflow-hidden border border-gray-200 z-0 mb-2"></div>
-                                            <div class="flex gap-3">
-                                                <div class="flex-1">
-                                                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Latitude</label>
-                                                    <input type="text" name="latitude" id="editAspekLat" required step="any" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2 px-3 text-sm">
-                                                </div>
-                                                <div class="flex-1">
-                                                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Longitude</label>
-                                                    <input type="text" name="longitude" id="editAspekLng" required step="any" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2 px-3 text-sm">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="pt-2">
-                                            <button type="submit" class="w-full bg-[#82C17D] hover:bg-[#6fa86a] text-white py-3 rounded-full font-bold shadow-md transition">
-                                                Simpan Perubahan
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <!-- VERIFY MODAL -->
-                            <div id="verifyModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-                                <div class="bg-white rounded-[30px] w-full max-w-md shadow-2xl overflow-hidden">
-                                    <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-                                        <h3 class="font-bold text-xl text-gray-800">Verifikasi Aspek Fisik</h3>
-                                        <button onclick="closeVerifyModal()" class="text-gray-400 hover:text-gray-600 transition">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                        </button>
-                                    </div>
-                                    <form id="verifyForm" method="POST" class="p-8 space-y-4">
-                                        @csrf
-                                        <div class="text-sm text-gray-600 mb-2">
-                                            Aspek: <span id="verifyAspekName" class="font-bold text-gray-800"></span>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Status Verifikasi</label>
-                                            <select name="status" required class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 px-4 text-sm">
-                                                <option value="terverifikasi">✅ Terverifikasi</option>
-                                                <option value="ditolak">❌ Ditolak</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Catatan (Opsional)</label>
-                                            <textarea name="catatan" rows="3" placeholder="Berikan catatan verifikasi..." class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 px-4 text-sm"></textarea>
-                                        </div>
-                                        <div class="pt-2">
-                                            <button type="submit" class="w-full bg-[#82C17D] hover:bg-[#6fa86a] text-white py-3 rounded-full font-bold shadow-md transition">
-                                                Simpan Verifikasi
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <!-- PHOTO VIEWER MODAL -->
-                            <div id="photoModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-                                <div class="relative max-w-3xl w-full">
-                                    <button onclick="closePhotoModal()" class="absolute -top-10 right-0 text-white hover:text-gray-300 transition">
-                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    </button>
-                                    <h4 id="photoModalTitle" class="text-white font-bold text-lg mb-3 text-center"></h4>
-                                    <div id="photoModalContent" class="flex gap-3 overflow-x-auto pb-2 justify-center"></div>
-                                </div>
-                            </div>
-
-                        @elseif($activeMenu === 'nilai')
-                            <!-- NILAI CONTENT -->
-                            @php
-                                $nilaiData = $proyek->properti?->nilai;
-                                $user = auth()->user();
-                                $isKaryawan = $user->isKaryawan();
-
-                                // Compute verification status inline for the view
-                                $dokumenLengkap = false;
-                                $missingDokumen = [];
-                                $fisikLengkap = false;
-                                $missingFisik = [];
-
-                                if ($proyek->properti) {
-                                    // --- Dokumen check ---
-                                    $typeReqs = \App\Services\DocumentRequirementService::getTypeRequirements($proyek->properti->tipe_properti);
-                                    $globalReqs = \App\Services\DocumentRequirementService::getGlobalRequirements();
-                                    if ($typeReqs) {
-                                        $allMandatory = array_merge($globalReqs, $typeReqs['mandatory'] ?? []);
-                                        $verifiedTypes = $proyek->properti->dokumens->where('status', 'terverifikasi')->pluck('tipe_dokumen')->toArray();
-                                        foreach ($allMandatory as $key => $label) {
-                                            if (!in_array($key, $verifiedTypes)) {
-                                                $uploaded = $proyek->properti->dokumens->where('tipe_dokumen', $key)->where('status', 'menunggu')->isNotEmpty();
-                                                $missingDokumen[] = $uploaded ? "{$label} (menunggu verifikasi)" : "{$label} (belum diunggah)";
-                                            }
-                                        }
-                                        $dokumenLengkap = empty($missingDokumen);
-                                    } else {
-                                        $missingDokumen[] = 'Tipe properti tidak dikenali';
-                                    }
-
-                                    // --- Fisik check ---
-                                    $checklistWajib = $proyek->properti->checklistFisiks;
-                                    if ($checklistWajib->isNotEmpty()) {
-                                        foreach ($checklistWajib as $item) {
-                                            $vStatus = $item->verificationStatus();
-                                            if ($vStatus !== 'terverifikasi') {
-                                                $statusLabel = $vStatus === 'belum' ? 'belum diisi' : ($vStatus === 'menunggu' ? 'menunggu verifikasi' : 'ditolak');
-                                                $missingFisik[] = "{$item->nama_item} ({$statusLabel})";
-                                            }
-                                        }
-                                        $fisikLengkap = empty($missingFisik);
-                                    } else {
-                                        $missingFisik[] = 'Belum ada checklist fisik. Karyawan harus menambahkan checklist aspek fisik wajib.';
-                                    }
-                                }
-
-                                $verifikasiLengkap = $dokumenLengkap && $fisikLengkap && $proyek->properti;
-                            @endphp
-
-                            <h2 class="text-xl font-bold text-gray-800 mb-6">Penilaian Properti</h2>
-
+                        {{-- ==================== FISIK TAB ==================== --}}
+                        @elseif($activeMenu === 'fisik')
                             @if(!$proyek->properti)
                                 <div class="bg-red-50 border border-red-100 text-red-700 p-6 rounded-[30px] text-center">
-                                    <svg class="w-12 h-12 mx-auto mb-3 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                                     <h3 class="font-bold text-lg">Properti Tidak Ditemukan</h3>
-                                    <p class="text-sm opacity-80">Wadah properti untuk proyek ini belum terinisialisasi.</p>
                                 </div>
                             @else
+                                @php
+                                    $koleksiFisik = $proyek->properti->koleksiFisik;
+                                    $checklistWajib = $proyek->properti->checklistFisiks ?? collect();
+                                    $allAspekFisik = $proyek->properti->aspekFisiks ?? collect();
+                                @endphp
 
-                                {{-- ========== VERIFICATION STATUS BANNER ========== --}}
-                                @if($verifikasiLengkap)
-                                    <div class="bg-green-50 border border-green-100 text-green-800 p-4 rounded-[20px] mb-6 flex items-start gap-3">
-                                        <svg class="w-5 h-5 text-green-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        <div>
-                                            <p class="text-sm font-bold">Verifikasi Lengkap — Siap Dinilai</p>
-                                            <p class="text-xs opacity-80">Semua dokumen dan aspek fisik wajib telah terverifikasi.</p>
-                                        </div>
+                                <h2 class="text-xl font-bold text-gray-800 mb-2">Fisik Properti</h2>
+                                <p class="text-gray-500 text-sm mb-6">Kelola dan verifikasi aspek fisik properti untuk proyek ini.</p>
+
+                                {{-- Aspek Fisik Wajib --}}
+                                <div class="mb-6">
+                                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">Aspek Fisik Wajib</h3>
+                                    <div class="bg-gray-50/70 rounded-[20px] p-4 space-y-1">
+                                        @forelse($checklistWajib as $item)
+                                        @php $vStatus = $item->verificationStatus(); @endphp
+                                        <label class="flex items-center gap-3 py-2 px-3 rounded-[12px] {{ $vStatus === 'terverifikasi' ? 'bg-green-50/80' : '' }}">
+                                            <span class="w-5 h-5 rounded-md {{ $vStatus === 'terverifikasi' ? 'bg-[#82C17D]' : ($vStatus === 'ditolak' ? 'border-2 border-red-400 bg-red-50' : 'border-2 border-gray-300 bg-white') }} shrink-0 flex items-center justify-center">
+                                                @if($vStatus === 'terverifikasi')<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>@endif
+                                            </span>
+                                            <span class="text-sm {{ $vStatus === 'terverifikasi' ? 'text-gray-800 font-semibold' : 'text-gray-500' }}">{{ $item->nama_item }}</span>
+                                        </label>
+                                        @empty
+                                        <p class="text-sm text-gray-400 italic text-center py-4">Belum ada checklist.</p>
+                                        @endforelse
                                     </div>
-                                @else
-                                    <div class="bg-yellow-50 border border-yellow-100 text-yellow-800 p-4 rounded-[20px] mb-6 flex items-start gap-3">
-                                        <svg class="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                        <div>
-                                            <p class="text-sm font-bold">Penilaian Terkunci</p>
-                                            <p class="text-xs opacity-80 mb-2">Verifikasi dokumen dan fisik harus diselesaikan sebelum penilaian dapat dilakukan.</p>
+                                </div>
 
-                                            @if(!$dokumenLengkap)
-                                                <div class="mt-2">
-                                                    <p class="text-xs font-bold text-yellow-700 mb-1">Dokumen yang belum lengkap:</p>
-                                                    <ul class="list-disc list-inside text-xs space-y-0.5 ml-1">
-                                                        @foreach($missingDokumen as $md)
-                                                            <li>{{ $md }}</li>
-                                                        @endforeach
-                                                    </ul>
-                                                </div>
-                                            @endif
-
-                                            @if(!$fisikLengkap)
-                                                <div class="mt-2">
-                                                    <p class="text-xs font-bold text-yellow-700 mb-1">Fisik yang belum lengkap:</p>
-                                                    <ul class="list-disc list-inside text-xs space-y-0.5 ml-1">
-                                                        @foreach($missingFisik as $mf)
-                                                            <li>{{ $mf }}</li>
-                                                        @endforeach
-                                                    </ul>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                @endif
-
-                                {{-- ========== EXISTING NILAI (View for all roles) ========== --}}
-                                @if($nilaiData)
-                                    <div class="border border-gray-100 rounded-[20px] p-6 mb-6">
-                                        <div class="flex items-center gap-2 mb-4">
-                                            <div class="w-1.5 h-6 rounded-full bg-[#82C17D]"></div>
-                                            <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider">Hasil Penilaian</h3>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {{-- Aspek Fisik --}}
+                                <div class="mb-6">
+                                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">Aspek Fisik</h3>
+                                    <div class="border border-gray-100 rounded-[20px] p-4">
+                                        @forelse($allAspekFisik->sortByDesc('created_at') as $aspek)
+                                        @php
+                                            $fotoList = is_array($aspek->foto_paths) ? $aspek->foto_paths : json_decode($aspek->foto_paths, true) ?? [];
+                                            $aspekData = json_encode([
+                                                'id' => $aspek->id,
+                                                'nama' => $aspek->nama_aspek,
+                                                'tipe' => $aspek->tipe,
+                                                'deskripsi' => $aspek->deskripsi,
+                                                'lat' => $aspek->latitude,
+                                                'lng' => $aspek->longitude,
+                                                'fotos' => $fotoList,
+                                                'status' => $aspek->status,
+                                                'catatan' => $aspek->catatan,
+                                                'creator' => $aspek->creator?->name ?? '-',
+                                                'createdAt' => $aspek->created_at->format('d M Y H:i'),
+                                                'createdById' => $aspek->created_by,
+                                            ]);
+                                        @endphp
+                                        <div class="flex justify-between items-center py-2 {{ !$loop->last ? 'border-b border-gray-50' : '' }} cursor-pointer hover:bg-gray-50 rounded-[12px] px-2 -mx-2 transition" onclick='openFisikModal({{ $aspekData }})'>
                                             <div>
-                                                <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Nilai Properti</label>
-                                                <p class="text-2xl font-bold text-[#82C17D]">Rp {{ number_format($nilaiData->nilai, 0, ',', '.') }}</p>
+                                                <h4 class="font-bold text-gray-800 text-sm">{{ $aspek->nama_aspek }}</h4>
+                                                <p class="text-xs text-gray-500">Oleh: {{ $aspek->creator?->name ?? '-' }} • {{ $aspek->created_at->diffForHumans() }}</p>
                                             </div>
-                                            <div>
-                                                <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-1">Dinilai Oleh</label>
-                                                <p class="text-sm font-semibold text-gray-800">{{ $nilaiData->creator?->name ?? '-' }}</p>
-                                                <p class="text-xs text-gray-400">{{ $nilaiData->created_at->format('d M Y, H:i') }}</p>
-                                            </div>
+                                            <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider {{ $aspek->status === 'terverifikasi' ? 'bg-green-100 text-green-700' : ($aspek->status === 'menunggu' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">{{ $aspek->status }}</span>
                                         </div>
-                                        @if($nilaiData->catatan)
-                                            <div class="mt-4 p-3 bg-gray-50 rounded-[12px] text-sm text-gray-600 border-l-2 border-[#82C17D]">
-                                                <strong>Catatan:</strong> {{ $nilaiData->catatan }}
-                                            </div>
-                                        @endif
+                                        @empty
+                                        <p class="text-sm text-gray-400 italic text-center py-4">Belum ada aspek fisik yang ditambahkan.</p>
+                                        @endforelse
                                     </div>
+                                </div>
+
+                                {{-- Action --}}
+                                @if(auth()->user()->isKaryawan())
+                                <div class="mt-6 pt-4 border-t border-gray-100">
+                                    @if($proyek->current_phase === 'fisik')
+                                    <form action="{{ route('proyek.selesai-verifikasi-fisik', $proyek->id) }}" method="POST" onsubmit="return confirm('Yakin verifikasi fisik sudah selesai? Fase akan berpindah ke Penilaian Properti.')">@csrf
+                                        <button type="submit" class="w-full bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-3 rounded-full text-sm font-bold shadow-md transition"
+                                            {{ ($koleksiFisik && $koleksiFisik->isAllVerified()) ? '' : 'disabled' }}>
+                                            Selesai Verifikasi Fisik, Lanjut ke fase berikutnya
+                                        </button>
+                                    </form>
+                                    @if(!($koleksiFisik && $koleksiFisik->isAllVerified()))
+                                    <p class="text-xs text-gray-400 mt-2 text-center">Semua aspek fisik wajib harus diverifikasi terlebih dahulu.</p>
+                                    @endif
+                                    @else
+                                    <button type="button" disabled class="w-full bg-gray-300 text-white px-5 py-3 rounded-full text-sm font-bold shadow-md cursor-not-allowed">Selesai Verifikasi Fisik, Lanjut ke fase berikutnya</button>
+                                    @endif
+                                </div>
                                 @endif
+                            @endif
 
-                                {{-- ========== FORM PENILAIAAN (Karyawan only, only if verifikasi lengkap) ========== --}}
-                                @if($isKaryawan && $verifikasiLengkap)
-                                    <div class="border border-gray-100 rounded-[20px] p-6">
-                                        <div class="flex items-center gap-2 mb-5">
-                                            <div class="w-1.5 h-6 rounded-full bg-[#82C17D]"></div>
-                                            <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider">{{ $nilaiData ? 'Edit Penilaian' : 'Berikan Penilaian' }}</h3>
-                                        </div>
+                        {{-- ==================== NILAI TAB ==================== --}}
+                        @elseif($activeMenu === 'nilai')
+                            @if(!$proyek->properti)
+                                <div class="bg-red-50 border border-red-100 text-red-700 p-6 rounded-[30px] text-center">
+                                    <h3 class="font-bold text-lg">Properti Tidak Ditemukan</h3>
+                                </div>
+                            @else
+                                @php
+                                    $koleksiNilai = $proyek->properti->koleksiNilai;
+                                    $nilaiData = $proyek->properti?->nilai;
+                                    $isLocked = $proyek->current_phase !== 'dinilai';
+                                @endphp
 
-                                        <form action="{{ route('properti.nilai.save', $proyek->properti->id) }}" method="POST" class="space-y-5">
+                                <h2 class="text-xl font-bold text-gray-800 mb-2">Penilaian Properti</h2>
+                                <p class="text-gray-500 text-sm mb-6">Nilai Properti untuk Proyek ini.</p>
+
+                                {{-- Nilai Properti --}}
+                                <div class="mb-6">
+                                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">Nilai Properti</h3>
+                                    <div class="border border-gray-100 rounded-[20px] p-4">
+                                        @if($isLocked || !auth()->user()->isKaryawan())
+                                            {{-- Locked or non-karyawan: show read-only nilai --}}
+                                            @if($nilaiData)
+                                            <p class="text-2xl font-bold text-[#82C17D]">Rp {{ number_format($nilaiData->nilai, 0, ',', '.') }}</p>
+                                            <p class="text-xs text-gray-400 mt-1">Dinilai oleh: {{ $nilaiData->creator?->name ?? '-' }}</p>
+                                            @if($nilaiData->catatan)
+                                            <p class="text-sm text-gray-600 mt-2">{{ $nilaiData->catatan }}</p>
+                                            @endif
+                                            @else
+                                            <p class="text-sm text-gray-400 italic">Belum ada penilaian.</p>
+                                            @endif
+                                        @else
+                                        {{-- Editable form for karyawan/admin in dinilai phase --}}
+                                        <form action="{{ route('properti.nilai.save', $proyek->properti->id) }}" method="POST" class="space-y-4" id="nilaiForm">
                                             @csrf
-
                                             <div>
-                                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Nilai Properti (Rp)</label>
+                                                <label class="block text-sm font-bold text-gray-700 mb-1">Nilai Properti</label>
                                                 <div class="relative">
                                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">Rp</span>
-                                                    <input type="number" name="nilai" id="nilaiInput" min="0" step="1" required
-                                                        value="{{ old('nilai', $nilaiData->nilai ?? '') }}"
+                                                    <input type="text" id="nilaiInput" required
+                                                        value="{{ old('nilai', $nilaiData->nilai ? number_format($nilaiData->nilai, 0, ',', '.') : '') }}"
                                                         placeholder="0"
-                                                        class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 pl-12 pr-4 text-sm font-semibold text-gray-800">
+                                                        class="w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-semibold">
                                                 </div>
-                                                @error('nilai')
-                                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                                @enderror
+                                                <input type="hidden" name="nilai" id="nilaiRaw" value="{{ old('nilai', $nilaiData->nilai ?? '') }}">
                                             </div>
-
                                             <div>
-                                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Catatan Penilaian</label>
-                                                <textarea name="catatan" id="catatanInput" rows="4" placeholder="Berikan catatan/alasan penilaian..."
-                                                    class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 px-4 text-sm">{{ old('catatan', $nilaiData->catatan ?? '') }}</textarea>
-                                                @error('catatan')
-                                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                                @enderror
+                                                <label class="block text-sm font-bold text-gray-700 mb-1">Catatan Penilaian</label>
+                                                <textarea name="catatan" rows="4" placeholder="Berikan catatan/alasan penilaian..."
+                                                    class="w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm">{{ old('catatan', $nilaiData->catatan ?? '') }}</textarea>
                                             </div>
-
-                                            <div class="flex gap-3 pt-2">
-                                                <button type="submit" class="bg-[#82C17D] hover:bg-[#6fa86a] text-white px-6 py-3 rounded-full text-sm font-bold shadow-md transition flex items-center gap-2">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                    {{ $nilaiData ? 'Update Penilaian' : 'Simpan Penilaian' }}
-                                                </button>
-
-                                                @if($nilaiData)
-                                                    <button type="button" onclick="if(confirm('Hapus penilaian ini?')) document.getElementById('hapusNilaiForm').submit();"
-                                                        class="bg-red-50 hover:bg-red-100 text-red-600 px-5 py-3 rounded-full text-sm font-bold transition flex items-center gap-2 border border-red-100">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                        Hapus
-                                                    </button>
-                                                @endif
-                                            </div>
+                                            <button type="submit" class="bg-[#82C17D] hover:bg-[#6fa86a] text-white px-6 py-3 rounded-full text-sm font-bold shadow-md transition">{{ $nilaiData ? 'Update Penilaian' : 'Simpan Penilaian' }}</button>
                                         </form>
-
-                                        @if($nilaiData)
-                                            <form id="hapusNilaiForm" action="{{ route('properti.nilai.destroy', $nilaiData->id) }}" method="POST" class="hidden">
-                                                @csrf
-                                                @method('DELETE')
-                                            </form>
                                         @endif
                                     </div>
+                                </div>
 
-                                @elseif(!$isKaryawan && !$nilaiData)
-                                    {{-- ========== EMPTY STATE FOR NON-KARYAWAN ========== --}}
-                                    <div class="bg-gray-50 rounded-[20px] p-12 text-center text-gray-400">
-                                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                                        </svg>
-                                        <p class="text-sm italic">Penilaian belum tersedia.</p>
-                                    </div>
+                                {{-- Action: Selesai Penilaian (only karyawan) --}}
+                                @if(auth()->user()->isKaryawan() && $proyek->current_phase === 'dinilai')
+                                <div class="mt-6 pt-4 border-t border-gray-100">
+                                    @if($nilaiData)
+                                    <form action="{{ route('proyek.selesai-penilaian', $proyek->id) }}" method="POST" onsubmit="return confirm('Yakin penilaian sudah selesai?')">@csrf
+                                        <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-full text-sm font-bold shadow-md transition">Selesai Menilai Proyek, Selesaikan Proyek</button>
+                                    </form>
+                                    @else
+                                    <button type="button" disabled class="w-full bg-gray-300 text-white px-5 py-3 rounded-full text-sm font-bold shadow-md cursor-not-allowed">Selesai Menilai Proyek, Selesaikan Proyek</button>
+                                    <p class="text-xs text-gray-400 mt-2 text-center">Penilaian harus diisi terlebih dahulu.</p>
+                                    @endif
+                                </div>
                                 @endif
 
+                                @if(auth()->user()->isAdmin() && $proyek->finish_requested && $proyek->current_phase === 'dinilai')
+                                <div class="mt-4 p-4 bg-yellow-50 border border-yellow-100 rounded-[20px]">
+                                    <p class="text-sm font-bold text-yellow-800 mb-2">Permintaan penyelesaian proyek dari {{ $proyek->finishRequester?->name ?? 'Karyawan' }}</p>
+                                    <form action="{{ route('proyek.accept-finish', $proyek->id) }}" method="POST">@csrf
+                                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-full text-sm font-bold shadow-md transition">Setujui Penyelesaian Proyek</button>
+                                    </form>
+                                </div>
+                                @endif
                             @endif
 
                         @endif
+                        {{-- End of activeMenu checks --}}
 
                     </div>
                 </div>
@@ -1059,390 +553,568 @@
         </div>
     </div>
 
-    <!-- UPLOAD MODAL -->
-    @if($proyek->properti)
-    @php
-        $typeReqs = \App\Services\DocumentRequirementService::getTypeRequirements($proyek->properti->tipe_properti);
-        $globalReqs = \App\Services\DocumentRequirementService::getGlobalRequirements();
-        $globalOpts = \App\Services\DocumentRequirementService::getGlobalOptionalRequirements();
-        $allMandatory = array_merge($globalReqs, $typeReqs['mandatory'] ?? []);
-        $allOptional = array_merge($typeReqs['optional'] ?? [], $globalOpts);
-    @endphp
-    <div id="uploadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-[30px] w-full max-w-md shadow-2xl overflow-hidden">
-            <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-                <h3 class="font-bold text-xl text-gray-800">Tambah Dokumen</h3>
-                <button onclick="document.getElementById('uploadModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 transition">
+    {{-- ==================== DOKUMEN DETAIL MODAL ==================== --}}
+    <div id="dokumenModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeDokumenModal()">
+        <div class="bg-white rounded-[30px] w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="bg-[#82C17D] px-6 py-4 flex justify-between items-center text-white shrink-0">
+                <h3 class="font-bold text-lg" id="dokumenModalTitle">Detail Dokumen</h3>
+                <button onclick="closeDokumenModal()" class="hover:bg-white/20 rounded-full p-1 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <form action="{{ route('dokumen.store', $proyek->properti->id) }}" method="POST" enctype="multipart/form-data" class="p-8 space-y-5">
-                @csrf
+            <div class="p-6 overflow-y-auto space-y-4">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Jenis Dokumen</label>
-                    <select name="tipe_dokumen" required onchange="updateDocName(this)"
-                        class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 px-4 text-sm font-medium text-gray-700">
-                        <option value="" disabled selected>Pilih Jenis Dokumen</option>
-                        <optgroup label="Wajib">
-                            @foreach($allMandatory as $key => $label)
-                                <option value="{{ $key }}">{{ $label }}</option>
-                            @endforeach
-                        </optgroup>
-                        @if(count($allOptional) > 0)
-                        <optgroup label="Opsional">
-                            @foreach($allOptional as $key => $label)
-                                <option value="{{ $key }}">{{ $label }}</option>
-                            @endforeach
-                        </optgroup>
-                        @endif
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Nama</label>
+                    <p class="text-sm font-semibold text-gray-800 dokumen-field-readonly" id="dokumenNama">-</p>
+                    <input type="text" id="dokumenNamaInput" class="hidden w-full rounded-xl border-gray-200 bg-gray-50 py-2 px-4 text-sm font-semibold focus:border-[#82C17D] focus:ring-[#82C17D]" />
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Tipe</label>
+                    <p class="text-sm font-semibold text-gray-800 dokumen-field-readonly" id="dokumenTipe">-</p>
+                    <select id="dokumenTipeSelect" class="hidden w-full rounded-xl border-gray-200 bg-gray-50 py-2 px-4 text-sm font-semibold focus:border-[#82C17D] focus:ring-[#82C17D]"></select>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Deskripsi</label>
+                    <p class="text-sm text-gray-600 dokumen-field-readonly" id="dokumenDeskripsi">-</p>
+                    <textarea id="dokumenDeskripsiInput" rows="2" placeholder="Deskripsi..." class="hidden w-full rounded-xl border-gray-200 bg-gray-50 py-2 px-4 text-sm focus:border-[#82C17D] focus:ring-[#82C17D]"></textarea>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Catatan</label>
+                    <p class="text-sm text-gray-600 dokumen-field-readonly" id="dokumenCatatan">-</p>
+                    <textarea id="dokumenCatatanInput" rows="2" placeholder="Catatan..." class="hidden w-full rounded-xl border-gray-200 bg-gray-50 py-2 px-4 text-sm focus:border-[#82C17D] focus:ring-[#82C17D]"></textarea>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-2">Dokumen</label>
+                    <div class="border border-gray-200 rounded-xl overflow-hidden">
+                        <iframe id="dokumenPreview" src="" class="w-full h-[300px] border-0"></iframe>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <button id="dokumenViewBtn" class="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-full text-xs font-bold transition flex items-center justify-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            View
+                        </button>
+                        <a id="dokumenDownloadBtn" href="#" download class="flex-1 bg-[#82C17D]/10 text-[#82C17D] hover:bg-[#82C17D]/20 px-4 py-2 rounded-full text-xs font-bold transition flex items-center justify-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            Download
+                        </a>
+                    </div>
+                    <div id="dokumenFileUpload" class="hidden mt-2">
+                        <label class="block text-[10px] text-gray-400 font-bold mb-1">Ganti File (opsional)</label>
+                        <input type="file" id="dokumenFileInput" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300" />
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Status</label>
+                    <div id="dokumenStatus" class="mt-1 dokumen-field-readonly"></div>
+                    <select id="dokumenStatusSelect" class="hidden w-full rounded-xl border-gray-200 bg-gray-50 py-2 px-4 text-sm font-semibold focus:border-[#82C17D] focus:ring-[#82C17D]">
+                        <option value="menunggu">Menunggu</option>
+                        <option value="terverifikasi">Terverifikasi</option>
+                        <option value="ditolak">Ditolak</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Nama Dokumen / File</label>
-                    <input type="text" id="doc_name_input" name="nama_dokumen" placeholder="Contoh: SHM No. 123" required
-                        class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D] py-2.5 px-4 text-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Pilih File (PDF/JPG/PNG)</label>
-                    <input type="file" name="file" required
-                        class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#82C17D] file:text-white hover:file:bg-[#6FA86A] cursor-pointer">
-                </div>
-                <div class="pt-2">
-                    <button type="submit" class="w-full bg-[#82C17D] hover:bg-[#6fa86a] text-white py-3 rounded-full font-bold shadow-md transition">
-                        Unggah Dokumen
-                    </button>
-                </div>
-            </form>
+                <p class="text-xs text-gray-400 italic" id="dokumenMeta">-</p>
+            </div>
+            <div class="p-6 pt-0 border-t border-gray-50 mt-auto shrink-0 flex justify-end gap-3">
+                <button onclick="closeDokumenModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-6 py-2.5 rounded-full text-sm font-bold transition">Kembali</button>
+                <button id="dokumenActionBtn" class="hidden bg-[#82C17D] hover:bg-[#6fa86a] text-white px-6 py-2.5 rounded-full text-sm font-bold transition">Simpan</button>
+            </div>
         </div>
     </div>
 
-    <!-- TYPE MODAL -->
-    <div id="typeModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-[30px] w-full max-w-md shadow-2xl overflow-hidden">
-            <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-                <h3 class="font-bold text-xl text-gray-800">Ubah Tipe Properti</h3>
-                <button onclick="document.getElementById('typeModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 transition">
+    {{-- ==================== FISIK DETAIL MODAL ==================== --}}
+    <div id="fisikModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeFisikModal()">
+        <div class="bg-white rounded-[30px] w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="bg-[#82C17D] px-6 py-4 flex justify-between items-center text-white shrink-0">
+                <h3 class="font-bold text-lg" id="fisikModalTitle">Detail Aspek Fisik</h3>
+                <button onclick="closeFisikModal()" class="hover:bg-white/20 rounded-full p-1 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <form action="{{ route('properti.updateType', $proyek->properti->id) }}" method="POST" class="p-8 space-y-4">
-                @csrf
+            <div class="p-6 overflow-y-auto space-y-4">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Pilih Tipe Objek</label>
-                    <select name="tipe_properti" required class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D]">
-                        @foreach(\App\Services\DocumentRequirementService::getAllTypes() as $val => $label)
-                            <option value="{{ $val }}" {{ $proyek->properti->tipe_properti === $val ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Nama</label>
+                    <p class="text-sm font-semibold text-gray-800 fisik-field-readonly" id="fisikNama">-</p>
+                    <input type="text" id="fisikNamaInput" class="hidden w-full rounded-xl border-gray-200 bg-gray-50 py-2 px-4 text-sm font-semibold focus:border-[#82C17D] focus:ring-[#82C17D]" />
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Tipe</label>
+                    <p class="text-sm font-semibold text-gray-800 fisik-field-readonly" id="fisikTipe">-</p>
+                    <select id="fisikTipeSelect" class="hidden w-full rounded-xl border-gray-200 bg-gray-50 py-2 px-4 text-sm font-semibold focus:border-[#82C17D] focus:ring-[#82C17D]">
+                        <option value="wajib">Wajib</option>
+                        <option value="opsional">Opsional</option>
                     </select>
                 </div>
-                <div class="pt-4">
-                    <button type="submit" class="w-full bg-[#82C17D] hover:bg-[#6fa86a] text-white py-3 rounded-full font-bold shadow-md transition">
-                        Simpan Perubahan
-                    </button>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Deskripsi</label>
+                    <p class="text-sm text-gray-600 fisik-field-readonly" id="fisikDeskripsi">-</p>
+                    <textarea id="fisikDeskripsiInput" rows="2" placeholder="Deskripsi..." class="hidden w-full rounded-xl border-gray-200 bg-gray-50 py-2 px-4 text-sm focus:border-[#82C17D] focus:ring-[#82C17D]"></textarea>
                 </div>
-            </form>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-2">Peta</label>
+                    <div class="grid grid-cols-2 gap-3 mb-2">
+                        <div class="bg-gray-50 rounded-xl px-4 py-2">
+                            <span class="text-[10px] text-gray-400 font-bold">Latitude</span>
+                            <p class="text-sm font-semibold text-gray-700 fisik-field-readonly" id="fisikLat">-</p>
+                            <input type="text" id="fisikLatInput" class="hidden w-full rounded-lg border-gray-200 bg-white py-1 px-2 text-sm font-semibold focus:border-[#82C17D] focus:ring-[#82C17D]" />
+                        </div>
+                        <div class="bg-gray-50 rounded-xl px-4 py-2">
+                            <span class="text-[10px] text-gray-400 font-bold">Longitude</span>
+                            <p class="text-sm font-semibold text-gray-700 fisik-field-readonly" id="fisikLng">-</p>
+                            <input type="text" id="fisikLngInput" class="hidden w-full rounded-lg border-gray-200 bg-white py-1 px-2 text-sm font-semibold focus:border-[#82C17D] focus:ring-[#82C17D]" />
+                        </div>
+                    </div>
+                    <div id="fisikMap" class="w-full h-[200px] rounded-xl z-0 border border-gray-200 hidden"></div>
+                    <p id="fisikNoMap" class="text-xs text-gray-400 italic hidden">Tidak ada koordinat.</p>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest block mb-2">Foto</label>
+                    <div id="fisikFotos" class="grid grid-cols-3 gap-2"></div>
+                    <p id="fisikNoFoto" class="text-xs text-gray-400 italic hidden">Tidak ada foto.</p>
+                    <div id="fisikFotoUpload" class="hidden mt-2">
+                        <label class="block text-[10px] text-gray-400 font-bold mb-1">Tambah Foto (opsional)</label>
+                        <input type="file" id="fisikFotoInput" multiple accept="image/jpeg,image/png" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300" />
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Catatan</label>
+                    <p class="text-sm text-gray-600 fisik-field-readonly" id="fisikCatatanText">-</p>
+                    <textarea id="fisikCatatanInput" rows="2" placeholder="Catatan verifikasi..." class="hidden w-full rounded-xl border-gray-200 bg-gray-50 py-2 px-4 text-sm focus:border-[#82C17D] focus:ring-[#82C17D]"></textarea>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Status</label>
+                    <div id="fisikStatus" class="mt-1 fisik-field-readonly"></div>
+                    <select id="fisikStatusSelect" class="hidden w-full rounded-xl border-gray-200 bg-gray-50 py-2 px-4 text-sm font-semibold focus:border-[#82C17D] focus:ring-[#82C17D]">
+                        <option value="menunggu">Menunggu</option>
+                        <option value="terverifikasi">Terverifikasi</option>
+                        <option value="ditolak">Ditolak</option>
+                    </select>
+                </div>
+                <p class="text-xs text-gray-400 italic" id="fisikMeta">-</p>
+            </div>
+            <div class="p-6 pt-0 border-t border-gray-50 mt-auto shrink-0 flex justify-end gap-3">
+                <button onclick="closeFisikModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-6 py-2.5 rounded-full text-sm font-bold transition">Kembali</button>
+                <button id="fisikActionBtn" class="hidden bg-[#82C17D] hover:bg-[#6fa86a] text-white px-6 py-2.5 rounded-full text-sm font-bold transition">Simpan</button>
+            </div>
         </div>
     </div>
-    @endif
 
-    <!-- VERIFY MODAL -->
-    <div id="verifyModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-[30px] w-full max-w-md shadow-2xl overflow-hidden">
-            <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-                <h3 class="font-bold text-xl text-gray-800">Verifikasi Dokumen</h3>
-                <button onclick="document.getElementById('verifyModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 transition">
+    {{-- ==================== TAMBAH DOKUMEN MODAL ==================== --}}
+    <div id="dokumenCreateModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeDokumenCreateModal()">
+        <div class="bg-white rounded-[30px] w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="bg-[#82C17D] px-6 py-4 flex justify-between items-center text-white shrink-0">
+                <h3 class="font-bold text-lg">Tambah Dokumen</h3>
+                <button onclick="closeDokumenCreateModal()" class="hover:bg-white/20 rounded-full p-1 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <form id="verifyForm" method="POST" class="p-8 space-y-4">
-                @csrf
-                <div class="text-sm text-gray-600 mb-2">
-                    Dokumen: <span id="verifyDocName" class="font-bold text-gray-800"></span>
+            <div class="p-6 overflow-y-auto space-y-4">
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Nama Dokumen</label>
+                    <input type="text" id="dokumenCreateNama" placeholder="Nama dokumen..." class="w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm font-semibold focus:border-[#82C17D] focus:ring-[#82C17D]" />
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Status Verifikasi</label>
-                    <select name="status" required class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D]">
-                        <option value="terverifikasi">✅ Terverifikasi (Asli)</option>
-                        <option value="ditolak">❌ Ditolak (Palsu/Tidak Lengkap)</option>
+                    <label class="block text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Tipe Dokumen</label>
+                    <select id="dokumenCreateTipe" class="w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm font-semibold focus:border-[#82C17D] focus:ring-[#82C17D]">
+                        <option value="" disabled selected>Pilih tipe...</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Catatan (Opsional)</label>
-                    <textarea name="catatan" rows="3" placeholder="Berikan alasan jika ditolak..."
-                        class="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-[#82C17D] focus:ring-[#82C17D]"></textarea>
+                    <label class="block text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Deskripsi</label>
+                    <textarea id="dokumenCreateDeskripsi" rows="2" placeholder="Deskripsi..." class="w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm focus:border-[#82C17D] focus:ring-[#82C17D]"></textarea>
                 </div>
-                <div class="pt-4">
-                    <button type="submit" class="w-full bg-[#82C17D] hover:bg-[#6fa86a] text-white py-3 rounded-full font-bold shadow-md transition">
-                        Simpan Verifikasi
-                    </button>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Catatan</label>
+                    <textarea id="dokumenCreateCatatan" rows="2" placeholder="Catatan..." class="w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm focus:border-[#82C17D] focus:ring-[#82C17D]"></textarea>
                 </div>
-            </form>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Unggah File</label>
+                    <input type="file" id="dokumenCreateFile" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300" />
+                    <p class="text-[10px] text-gray-400 mt-1">Format: PDF, JPG, JPEG, PNG — Maks 10MB</p>
+                </div>
+            </div>
+            <div class="p-6 pt-0 border-t border-gray-50 mt-auto shrink-0 flex justify-end gap-3">
+                <button onclick="closeDokumenCreateModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-6 py-2.5 rounded-full text-sm font-bold transition">Batal</button>
+                <button id="dokumenCreateBtn" class="bg-[#82C17D] hover:bg-[#6fa86a] text-white px-6 py-2.5 rounded-full text-sm font-bold transition">Unggah</button>
+            </div>
         </div>
     </div>
 
     @push('scripts')
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
-        // ===== DOCUMENT FUNCTIONS =====
-        function updateDocName(select) {
-            const input = document.getElementById('doc_name_input');
-            const selectedText = select.options[select.selectedIndex].text;
-            if (input && selectedText) {
-                input.value = selectedText;
-            }
+        // ── Dokumen type options (for create modal) ──
+        var dokumenTipeOptions = @json($tipeOptionsForJs ?? []);
+        var dokumenPropertiId = {{ $proyek->properti->id ?? 'null' }};
+
+        // ── Status badge helper ──
+        function statusBadge(status) {
+            var s = status.toLowerCase();
+            var cls = s === 'terverifikasi' ? 'bg-green-100 text-green-700'
+                    : s === 'menunggu' ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-red-100 text-red-700';
+            return '<span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ' + cls + '">' + status + '</span>';
         }
 
-        function openVerifyModal(id, name) {
-            const modal = document.getElementById('verifyModal');
-            const form = document.getElementById('verifyForm');
-            const nameSpan = document.getElementById('verifyDocName');
+        // ── CSRF token ──
+        var csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
 
-            nameSpan.innerText = name;
-            form.action = `/dokumen/${id}/verifikasi`;
-            modal.classList.remove('hidden');
+        // ── Current user role (set by Blade) ──
+        var currentUserRole = '{{ auth()->user()->role }}';
+        var currentUserId = {{ auth()->id() }};
+
+        // ══════════════════════════════════════════════════════════
+        // DOKUMEN MODAL
+        // ══════════════════════════════════════════════════════════
+
+        function dokumenResetUI() {
+            // Hide all inputs, show all read-only fields
+            document.querySelectorAll('.dokumen-field-readonly').forEach(function(el) { el.classList.remove('hidden'); });
+            document.getElementById('dokumenNamaInput').classList.add('hidden');
+            document.getElementById('dokumenTipeSelect').classList.add('hidden');
+            document.getElementById('dokumenDeskripsiInput').classList.add('hidden');
+            document.getElementById('dokumenCatatanInput').classList.add('hidden');
+            document.getElementById('dokumenFileUpload').classList.add('hidden');
+            document.getElementById('dokumenStatusSelect').classList.add('hidden');
+            document.getElementById('dokumenActionBtn').classList.add('hidden');
         }
 
-        // ===== LEAFLET MAPS =====
-        let petaProperti = null;
-        let petaAspek = null;
-        let petaAspekEdit = null;
-        let addMarker = null;
-        let editAspekMarker = null;
+        function openDokumenModal(data) {
+            dokumenResetUI();
 
-        function getStatusColor(status) {
-            return status === 'terverifikasi' ? '#82C17D' : status === 'ditolak' ? '#ef4444' : '#eab308';
-        }
+            document.getElementById('dokumenModalTitle').textContent = data.nama;
+            document.getElementById('dokumenNama').textContent = data.nama;
+            document.getElementById('dokumenTipe').textContent = data.tipeLabel;
+            document.getElementById('dokumenDeskripsi').textContent = data.deskripsi || '-';
+            document.getElementById('dokumenCatatan').textContent = data.catatan || '-';
+            document.getElementById('dokumenPreview').src = data.filePath;
+            document.getElementById('dokumenViewBtn').onclick = function() { window.open(data.filePath, '_blank'); };
+            document.getElementById('dokumenDownloadBtn').href = data.filePath;
+            document.getElementById('dokumenStatus').innerHTML = statusBadge(data.status);
+            document.getElementById('dokumenMeta').textContent = 'diupload oleh ' + data.uploader + ' pada ' + data.createdAt;
 
-        // Initialize Peta Properti (shows all verified aspects with GPS)
-        function initPetaProperti() {
-            const mapEl = document.getElementById('petaProperti');
-            if (!mapEl) return;
+            var actionBtn = document.getElementById('dokumenActionBtn');
 
-            let center = [-6.2, 106.8];
-            let zoom = 13;
+            if (currentUserRole === 'karyawan' || currentUserRole === 'admin') {
+                // Karyawan/Admin: can only change status + catatan
+                document.getElementById('dokumenCatatan').classList.add('hidden');
+                document.getElementById('dokumenCatatanInput').classList.remove('hidden');
+                document.getElementById('dokumenCatatanInput').value = data.catatan || '';
 
-            const aspeks = [];
-            @if($activeMenu === 'fisik')
-                @foreach($allAspekFisik as $aspek)
-                    @if($aspek->latitude && $aspek->longitude)
-                        aspeks.push({
-                            lat: {{ $aspek->latitude }},
-                            lng: {{ $aspek->longitude }},
-                            name: '{{ addslashes($aspek->nama_aspek) }}',
-                            status: '{{ $aspek->status }}',
-                            tipe: '{{ $aspek->checklist_fisik_id ? 'wajib' : 'opsional' }}',
-                            deskripsi: '{{ addslashes($aspek->deskripsi ?? '') }}',
-                            foto: '{{ $aspek->foto_paths && count($aspek->foto_paths) > 0 ? asset('storage/' . $aspek->foto_paths[0]) : '' }}'
+                document.getElementById('dokumenStatus').classList.add('hidden');
+                document.getElementById('dokumenStatusSelect').classList.remove('hidden');
+                document.getElementById('dokumenStatusSelect').value = data.status;
+
+                actionBtn.textContent = 'Simpan Verifikasi';
+                actionBtn.classList.remove('hidden');
+                actionBtn.onclick = function() {
+                    var formData = new FormData();
+                    formData.append('status', document.getElementById('dokumenStatusSelect').value);
+                    formData.append('catatan', document.getElementById('dokumenCatatanInput').value);
+                    formData.append('_token', csrfToken);
+
+                    fetch('/dokumen/' + data.id + '/verifikasi', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrfToken },
+                        body: formData
+                    })
+                    .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+                    .then(function(r) {
+                        if (r.ok) { closeDokumenModal(); location.reload(); }
+                        else { alert('Gagal: ' + (r.data && r.data.message || 'Terjadi kesalahan.')); }
+                    })
+                    .catch(function(e) { alert('Error: ' + e.message); });
+                };
+            } else if (currentUserRole === 'client' && data.uploadedById == currentUserId) {
+                if (data.status === 'terverifikasi') {
+                    // Already verified — read-only, show a note
+                    document.getElementById('dokumenMeta').textContent = 'Dokumen ini sudah terverifikasi dan tidak dapat diubah.';
+                } else {
+                    // Client: can edit everything except status when not yet verified
+                    document.getElementById('dokumenNama').classList.add('hidden');
+                    document.getElementById('dokumenNamaInput').classList.remove('hidden');
+                    document.getElementById('dokumenNamaInput').value = data.nama;
+
+                    document.getElementById('dokumenTipe').classList.add('hidden');
+                    document.getElementById('dokumenTipeSelect').classList.remove('hidden');
+                    // Populate tipe options
+                    var tipeSelect = document.getElementById('dokumenTipeSelect');
+                    tipeSelect.innerHTML = '';
+                    if (data.tipeOptions) {
+                        Object.keys(data.tipeOptions).forEach(function(key) {
+                            var opt = document.createElement('option');
+                            opt.value = key;
+                            opt.textContent = data.tipeOptions[key];
+                            if (key === data.tipe) opt.selected = true;
+                            tipeSelect.appendChild(opt);
                         });
-                    @endif
-                @endforeach
-            @endif
+                    }
 
-            if (aspeks.length > 0) {
-                center = [aspeks[0].lat, aspeks[0].lng];
-                zoom = 16;
-            }
+                    document.getElementById('dokumenDeskripsi').classList.add('hidden');
+                    document.getElementById('dokumenDeskripsiInput').classList.remove('hidden');
+                    document.getElementById('dokumenDeskripsiInput').value = data.deskripsi || '';
 
-            petaProperti = L.map('petaProperti').setView(center, zoom);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(petaProperti);
+                    document.getElementById('dokumenCatatan').classList.add('hidden');
+                    document.getElementById('dokumenCatatanInput').classList.remove('hidden');
+                    document.getElementById('dokumenCatatanInput').value = data.catatan || '';
 
-            const bounds = [];
-            aspeks.forEach(a => {
-                const color = getStatusColor(a.status);
-                const marker = L.circleMarker([a.lat, a.lng], {
-                    radius: 10,
-                    fillColor: color,
-                    color: '#fff',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.9
-                }).addTo(petaProperti);
+                    document.getElementById('dokumenFileUpload').classList.remove('hidden');
 
-                let popup = `<div style="min-width:150px"><strong>${a.name}</strong><br><span style="font-size:11px;color:${color};font-weight:bold">${a.status.toUpperCase()}</span><br><span style="font-size:10px;color:#888">${a.tipe === 'wajib' ? '🔴 Wajib' : '🟡 Opsional'}</span>`;
-                if (a.deskripsi) popup += `<br><span style="font-size:11px;color:#555">${a.deskripsi.substring(0,80)}${a.deskripsi.length > 80 ? '...' : ''}</span>`;
-                if (a.foto) popup += `<br><img src="${a.foto}" style="width:120px;height:80px;object-fit:cover;border-radius:6px;margin-top:4px">`;
-                popup += `</div>`;
-                marker.bindPopup(popup);
-                bounds.push([a.lat, a.lng]);
-            });
+                    actionBtn.textContent = 'Simpan Perubahan';
+                    actionBtn.classList.remove('hidden');
+                    actionBtn.onclick = function() {
+                        var formData = new FormData();
+                        formData.append('nama_dokumen', document.getElementById('dokumenNamaInput').value);
+                        formData.append('tipe_dokumen', document.getElementById('dokumenTipeSelect').value);
+                        formData.append('deskripsi', document.getElementById('dokumenDeskripsiInput').value);
+                        formData.append('catatan', document.getElementById('dokumenCatatanInput').value);
+                        var fileInput = document.getElementById('dokumenFileInput');
+                        if (fileInput && fileInput.files.length > 0) {
+                            formData.append('file', fileInput.files[0]);
+                        }
 
-            if (bounds.length > 1) {
-                petaProperti.fitBounds(bounds, { padding: [30, 30] });
-            }
-        }
-
-        // Initialize Peta Aspekt (draggable pin for add/edit forms)
-        function initPetaAspekt(mapId, latInputId, lngInputId) {
-            const mapEl = document.getElementById(mapId);
-            if (!mapEl) return;
-
-            const latInput = document.getElementById(latInputId);
-            const lngInput = document.getElementById(lngInputId);
-
-            let center = [-6.2, 106.8];
-            let zoom = 15;
-
-            if (latInput.value && lngInput.value) {
-                center = [parseFloat(latInput.value), parseFloat(lngInput.value)];
-                zoom = 17;
-            }
-
-            const map = L.map(mapId).setView(center, zoom);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-
-            const marker = L.marker(center, { draggable: true }).addTo(map);
-
-            marker.on('dragend', function(e) {
-                const pos = e.target.getLatLng();
-                latInput.value = pos.lat.toFixed(7);
-                lngInput.value = pos.lng.toFixed(7);
-            });
-
-            map.on('click', function(e) {
-                marker.setLatLng(e.latlng);
-                latInput.value = e.latlng.lat.toFixed(7);
-                lngInput.value = e.latlng.lng.toFixed(7);
-            });
-
-            function updateMarkerFromInputs() {
-                const lat = parseFloat(latInput.value);
-                const lng = parseFloat(lngInput.value);
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    marker.setLatLng([lat, lng]);
-                    map.panTo([lat, lng]);
+                        formData.append('_method', 'PUT');
+                        fetch('/dokumen/' + data.id, {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                            body: formData
+                        })
+                        .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+                        .then(function(r) {
+                            if (r.ok) { closeDokumenModal(); location.reload(); }
+                            else { alert('Gagal: ' + (r.data && r.data.message || 'Terjadi kesalahan.')); }
+                        })
+                        .catch(function(e) { alert('Error: ' + e.message); });
+                    };
                 }
             }
-            latInput.addEventListener('change', updateMarkerFromInputs);
-            lngInput.addEventListener('change', updateMarkerFromInputs);
+            // else: read-only, no action button (already hidden by reset)
 
-            if (mapId === 'petaAspek') {
-                petaAspek = map;
-                addMarker = marker;
+            document.getElementById('dokumenModal').classList.remove('hidden');
+        }
+
+        function closeDokumenModal() {
+            document.getElementById('dokumenModal').classList.add('hidden');
+            document.getElementById('dokumenPreview').src = '';
+            dokumenResetUI();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // DOKUMEN CREATE MODAL
+        // ══════════════════════════════════════════════════════════
+
+        function openDokumenCreateModal() {
+            // Reset form
+            document.getElementById('dokumenCreateNama').value = '';
+            document.getElementById('dokumenCreateDeskripsi').value = '';
+            document.getElementById('dokumenCreateCatatan').value = '';
+            document.getElementById('dokumenCreateFile').value = '';
+
+            // Populate tipe options
+            var select = document.getElementById('dokumenCreateTipe');
+            select.innerHTML = '<option value="" disabled selected>Pilih tipe...</option>';
+            if (dokumenTipeOptions) {
+                Object.keys(dokumenTipeOptions).forEach(function(key) {
+                    var opt = document.createElement('option');
+                    opt.value = key;
+                    opt.textContent = dokumenTipeOptions[key];
+                    select.appendChild(opt);
+                });
+            }
+
+            document.getElementById('dokumenCreateModal').classList.remove('hidden');
+        }
+
+        function closeDokumenCreateModal() {
+            document.getElementById('dokumenCreateModal').classList.add('hidden');
+        }
+
+        // Wire create button
+        document.getElementById('dokumenCreateBtn').addEventListener('click', function() {
+            var nama = document.getElementById('dokumenCreateNama').value.trim();
+            var tipe = document.getElementById('dokumenCreateTipe').value;
+            var fileInput = document.getElementById('dokumenCreateFile');
+
+            if (!nama) { alert('Nama dokumen wajib diisi.'); return; }
+            if (!tipe) { alert('Tipe dokumen wajib dipilih.'); return; }
+            if (!fileInput.files.length) { alert('File dokumen wajib diunggah.'); return; }
+
+            var formData = new FormData();
+            formData.append('nama_dokumen', nama);
+            formData.append('tipe_dokumen', tipe);
+            formData.append('deskripsi', document.getElementById('dokumenCreateDeskripsi').value);
+            formData.append('catatan', document.getElementById('dokumenCreateCatatan').value);
+            formData.append('file', fileInput.files[0]);
+
+            this.disabled = true;
+            this.textContent = 'Mengunggah...';
+
+            fetch('/properti/' + dokumenPropertiId + '/dokumen', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken },
+                body: formData
+            })
+            .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+            .then(function(r) {
+                if (r.ok) { closeDokumenCreateModal(); location.reload(); }
+                else { alert('Gagal: ' + (r.data && r.data.message || 'Terjadi kesalahan.')); }
+            })
+            .catch(function(e) { alert('Error: ' + e.message); })
+            .finally(function() {
+                document.getElementById('dokumenCreateBtn').disabled = false;
+                document.getElementById('dokumenCreateBtn').textContent = 'Unggah';
+            });
+        });
+
+        // ══════════════════════════════════════════════════════════
+        // FISIK MODAL
+        // ══════════════════════════════════════════════════════════
+        var fisikMap = null;
+        var fisikMarker = null;
+
+        function fisikResetUI() {
+            document.querySelectorAll('.fisik-field-readonly').forEach(function(el) { el.classList.remove('hidden'); });
+            document.getElementById('fisikNamaInput').classList.add('hidden');
+            document.getElementById('fisikTipeSelect').classList.add('hidden');
+            document.getElementById('fisikDeskripsiInput').classList.add('hidden');
+            document.getElementById('fisikLatInput').classList.add('hidden');
+            document.getElementById('fisikLngInput').classList.add('hidden');
+            document.getElementById('fisikFotoUpload').classList.add('hidden');
+            document.getElementById('fisikCatatanText').classList.remove('hidden');
+            document.getElementById('fisikCatatanInput').classList.add('hidden');
+            document.getElementById('fisikStatusSelect').classList.add('hidden');
+            document.getElementById('fisikActionBtn').classList.add('hidden');
+        }
+
+        function openFisikModal(data) {
+            fisikResetUI();
+
+            document.getElementById('fisikModalTitle').textContent = data.nama;
+            document.getElementById('fisikNama').textContent = data.nama;
+            document.getElementById('fisikTipe').textContent = data.tipe;
+            document.getElementById('fisikDeskripsi').textContent = data.deskripsi || '-';
+            document.getElementById('fisikLat').textContent = data.lat || '-';
+            document.getElementById('fisikLng').textContent = data.lng || '-';
+            document.getElementById('fisikStatus').innerHTML = statusBadge(data.status);
+            document.getElementById('fisikCatatanText').textContent = data.catatan || '-';
+            document.getElementById('fisikMeta').textContent = 'dibuat oleh ' + data.creator + ' pada ' + data.createdAt;
+
+            // Fotos
+            var fotoContainer = document.getElementById('fisikFotos');
+            var noFoto = document.getElementById('fisikNoFoto');
+            fotoContainer.innerHTML = '';
+            if (data.fotos && data.fotos.length > 0) {
+                noFoto.classList.add('hidden');
+                data.fotos.forEach(function(foto) {
+                    var url = '{{ asset('storage/') }}/' + foto;
+                    var img = document.createElement('img');
+                    img.src = url;
+                    img.className = 'w-full h-24 object-cover rounded-xl cursor-pointer hover:opacity-80 transition';
+                    img.onclick = function() { window.open(url, '_blank'); };
+                    fotoContainer.appendChild(img);
+                });
             } else {
-                petaAspekEdit = map;
-                editAspekMarker = marker;
+                noFoto.classList.remove('hidden');
             }
 
-            setTimeout(() => map.invalidateSize(), 200);
-        }
-
-        // ===== CHECKLIST MODAL =====
-        function openChecklistModal() {
-            document.getElementById('checklistTipeInput').value = 'wajib';
-            document.getElementById('checklistModalTitle').innerText = 'Tambah Checklist';
-            document.getElementById('checklistForm').action = `/properti/{{ $proyek->properti->id }}/checklist-fisik`;
-            document.getElementById('checklistNamaInput').value = '';
-            document.getElementById('checklistModal').classList.remove('hidden');
-        }
-
-        function closeChecklistModal() {
-            document.getElementById('checklistModal').classList.add('hidden');
-        }
-
-        // ===== ADD / FILL ASPEK MODAL =====
-        function openAddModal() {
-            document.getElementById('addModal').classList.remove('hidden');
-            setTimeout(() => initPetaAspekt('petaAspek', 'inputLatitude', 'inputLongitude'), 300);
-        }
-
-        function closeAddModal() {
-            document.getElementById('addModal').classList.add('hidden');
-            if (petaAspek) { petaAspek.remove(); petaAspek = null; }
-            document.getElementById('inputLatitude').value = '';
-            document.getElementById('inputLongitude').value = '';
-        }
-
-        function openFillModal(checklistId, namaItem) {
-            const select = document.getElementById('addJenisSelect');
-            select.value = checklistId;
-            updateAddFormFromSelect(select);
-            openAddModal();
-        }
-
-        function updateAddFormFromSelect(select) {
-            const option = select.options[select.selectedIndex];
-            if (option && option.value) {
-                // Wajib item selected
-                document.getElementById('addNamaInput').value = option.dataset.nama || '';
-                document.getElementById('addTipeInput').value = 'wajib';
-            } else if (option) {
-                // Opsional selected (empty value)
-                document.getElementById('addNamaInput').value = '';
-                document.getElementById('addTipeInput').value = 'opsional';
+            // Map
+            var mapDiv = document.getElementById('fisikMap');
+            var noMap = document.getElementById('fisikNoMap');
+            if (data.lat && data.lng) {
+                noMap.classList.add('hidden');
+                mapDiv.classList.remove('hidden');
+                setTimeout(function() {
+                    if (fisikMap) { fisikMap.remove(); fisikMap = null; }
+                    fisikMap = L.map('fisikMap').setView([data.lat, data.lng], 15);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap'
+                    }).addTo(fisikMap);
+                    fisikMarker = L.marker([data.lat, data.lng]).addTo(fisikMap);
+                    fisikMap.invalidateSize();
+                }, 100);
+            } else {
+                mapDiv.classList.add('hidden');
+                noMap.classList.remove('hidden');
             }
-        }
 
-        // ===== EDIT ASPEK MODAL =====
-        function openEditAspekModal(id, nama, deskripsi, tipe, lat, lng, fotoPaths, checklistId) {
-            const modal = document.getElementById('editAspekModal');
-            const form = document.getElementById('editAspekForm');
+            var actionBtn = document.getElementById('fisikActionBtn');
 
-            form.action = `/aspek-fisik/${id}`;
-            document.getElementById('editAspekChecklistId').value = checklistId || '';
-            document.getElementById('editAspekNama').value = nama;
-            document.getElementById('editAspekDeskripsi').value = deskripsi || '';
-            document.getElementById('editAspekLat').value = lat || '';
-            document.getElementById('editAspekLng').value = lng || '';
+            if (currentUserRole === 'karyawan' || currentUserRole === 'mitra' || currentUserRole === 'admin') {
+                if (data.status === 'terverifikasi') {
+                    // Already verified — read-only, show a note
+                    document.getElementById('fisikMeta').textContent = 'Aspek fisik ini sudah terverifikasi dan tidak dapat diubah.';
+                } else {
+                    // Karyawan/Mitra/Admin: can change status + catatan
+                    document.getElementById('fisikCatatanText').classList.add('hidden');
+                    document.getElementById('fisikCatatanInput').classList.remove('hidden');
+                    document.getElementById('fisikCatatanInput').value = data.catatan || '';
 
-            modal.classList.remove('hidden');
-            setTimeout(() => initPetaAspekt('petaAspekEdit', 'editAspekLat', 'editAspekLng'), 300);
-        }
+                    document.getElementById('fisikStatus').classList.add('hidden');
+                    document.getElementById('fisikStatusSelect').classList.remove('hidden');
+                    document.getElementById('fisikStatusSelect').value = data.status;
 
-        function closeEditAspekModal() {
-            document.getElementById('editAspekModal').classList.add('hidden');
-            if (petaAspekEdit) { petaAspekEdit.remove(); petaAspekEdit = null; }
-        }
+                    actionBtn.textContent = 'Simpan Verifikasi';
+                    actionBtn.classList.remove('hidden');
+                    actionBtn.onclick = function() {
+                        var formData = new FormData();
+                        formData.append('status', document.getElementById('fisikStatusSelect').value);
+                        formData.append('catatan', document.getElementById('fisikCatatanInput').value);
 
-        // ===== VERIFY MODAL =====
-        function openVerifyModal(id, name) {
-            const modal = document.getElementById('verifyModal');
-            const form = document.getElementById('verifyForm');
-
-            document.getElementById('verifyAspekName').innerText = name;
-            form.action = `/aspek-fisik/${id}/verifikasi`;
-            modal.classList.remove('hidden');
-        }
-
-        function closeVerifyModal() {
-            document.getElementById('verifyModal').classList.add('hidden');
-        }
-
-        // ===== PHOTO MODAL =====
-        function openPhotoModal(title, photos) {
-            document.getElementById('photoModalTitle').innerText = title;
-            const content = document.getElementById('photoModalContent');
-            content.innerHTML = photos.map(p => `<img src="${p}" class="h-[300px] w-auto rounded-[12px] object-cover shrink-0">`).join('');
-            document.getElementById('photoModal').classList.remove('hidden');
-        }
-
-        function closePhotoModal() {
-            document.getElementById('photoModal').classList.add('hidden');
-        }
-
-        // Close modals on backdrop click
-        ['addModal', 'editAspekModal', 'verifyModal', 'photoModal', 'checklistModal'].forEach(id => {
-            document.getElementById(id)?.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    if (id === 'addModal') closeAddModal();
-                    else if (id === 'editAspekModal') closeEditAspekModal();
-                    else if (id === 'verifyModal') closeVerifyModal();
-                    else if (id === 'photoModal') closePhotoModal();
-                    else if (id === 'checklistModal') closeChecklistModal();
+                        fetch('/aspek-fisik/' + data.id + '/verifikasi', {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': csrfToken },
+                            body: formData
+                        })
+                        .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+                        .then(function(r) {
+                            if (r.ok) { closeFisikModal(); location.reload(); }
+                            else { alert('Gagal: ' + (r.data && r.data.message || 'Terjadi kesalahan.')); }
+                        })
+                        .catch(function(e) { alert('Error: ' + e.message); });
+                    };
                 }
-            });
+            }
+            // else: read-only, no action button (already hidden by reset)
+
+            document.getElementById('fisikModal').classList.remove('hidden');
+        }
+
+        function closeFisikModal() {
+            document.getElementById('fisikModal').classList.add('hidden');
+            if (fisikMap) { fisikMap.remove(); fisikMap = null; fisikMarker = null; }
+            fisikResetUI();
+        }
+
+        // ── Global close: Escape key + click outside ──
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeDokumenModal();
+                closeDokumenCreateModal();
+                closeFisikModal();
+            }
         });
 
-        // Initialize Peta Properti on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            @if($activeMenu === 'fisik')
-                initPetaProperti();
-            @endif
-        });
+        // ── Rp input formatting (existing) ──
+        (function() {
+            var display = document.getElementById('nilaiInput');
+            var raw = document.getElementById('nilaiRaw');
+            if (!display || !raw) return;
+
+            function formatRp(val) {
+                var num = val.replace(/\D/g, '');
+                if (!num) return '0';
+                return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+
+            display.addEventListener('input', function() {
+                var num = this.value.replace(/\D/g, '');
+                raw.value = num;
+                var cursorPos = this.selectionStart;
+                var oldLen = this.value.length;
+                this.value = formatRp(this.value);
+                var newLen = this.value.length;
+                this.setSelectionRange(cursorPos + (newLen - oldLen), cursorPos + (newLen - oldLen));
+            });
+        })();
     </script>
     @endpush
 </x-app-layout>

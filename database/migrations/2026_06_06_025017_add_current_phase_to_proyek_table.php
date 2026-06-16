@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('proyek', function (Blueprint $table) {
             $table->enum('current_phase', ['dimulai', 'dokumen', 'fisik', 'dinilai', 'selesai'])
-                ->default('dimulai')
+                ->default('dokumen')
                 ->after('status');
         });
     }

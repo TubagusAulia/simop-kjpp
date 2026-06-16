@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Events\MessageSent;
 use App\Models\Message;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class MessageController extends Controller
@@ -12,6 +13,7 @@ class MessageController extends Controller
     public function index()
     {
         $users = User::where('id', '!=', Auth::id())->get();
+
         return view('modul.chat.index', compact('users'));
     }
 
@@ -19,10 +21,10 @@ class MessageController extends Controller
     {
         $messages = Message::where(function ($query) use ($user) {
             $query->where('sender_id', Auth::id())
-                  ->where('recipient_id', $user->id);
+                ->where('recipient_id', $user->id);
         })->orWhere(function ($query) use ($user) {
             $query->where('sender_id', $user->id)
-                  ->where('recipient_id', Auth::id());
+                ->where('recipient_id', Auth::id());
         })->orderBy('created_at', 'asc')->get();
 
         return response()->json($messages);
@@ -40,6 +42,8 @@ class MessageController extends Controller
             'recipient_id' => $request->recipient_id,
             'body' => $request->body,
         ]);
+
+        broadcast(new MessageSent($message))->toOthers();
 
         return response()->json($message);
     }
@@ -63,6 +67,7 @@ class MessageController extends Controller
         }
 
         $message->delete();
+
         return response()->json(['success' => true]);
     }
 
