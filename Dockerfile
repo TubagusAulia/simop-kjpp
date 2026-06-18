@@ -13,6 +13,7 @@ RUN apk add --no-cache \
     curl \
     zip \
     unzip \
+    sqlite-dev \
     libxml2-dev \
     libzip-dev \
     oniguruma-dev \
