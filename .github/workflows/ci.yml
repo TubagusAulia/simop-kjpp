@@ -133,6 +133,7 @@ jobs:
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=512M --error-format=checkstyle > phpstan-report.xml || true
 
       - name: SonarCloud Scan
+        if: github.event_name == 'push'
         uses: SonarSource/sonarcloud-github-action@v3
         with:
           args: >
@@ -141,7 +142,6 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.php.coverage.reportPaths=coverage.xml
             -Dsonar.php.tests.reportPath=test-report.xml
-            -Dsonar.pullrequest.provider=none
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
