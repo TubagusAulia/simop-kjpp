@@ -1,8 +1,11 @@
 ---
 # ============================================
-# Webserver Role — Install Docker & Dependencies
+# Webserver Role — Install Podman & Dependencies
 # ============================================
 # Supports: Ubuntu/Debian, AlmaLinux/RHEL/CentOS
+# Uses Podman (rootless container runtime) instead of Docker
+# Podman is a drop-in replacement for Docker — same Dockerfile &
+# docker-compose.yml format, compatible CLI.
 # ============================================
 
 - name: Gather OS facts
@@ -11,88 +14,49 @@
       - distribution
       - os_family
 
-# ── Ubuntu / Debian ──────────────────────────
-
-- name: Install prerequisites (Debian/Ubuntu)
-  ansible.builtin.apt:
-    name:
-      - ca-certificates
-      - curl
-      - gnupg
-    state: present
-    update_cache: yes
-  when: ansible_os_family == "Debian"
-
-- name: Add Docker GPG key (Debian/Ubuntu)
-  ansible.builtin.shell: |
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-    chmod a+r /etc/apt/keyrings/docker.asc
-  when: ansible_os_family == "Debian"
-
-- name: Add Docker repository (Debian/Ubuntu)
-  ansible.builtin.shell: |
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
-  when: ansible_os_family == "Debian"
-
-- name: Install Docker CE (Debian/Ubuntu)
-  ansible.builtin.apt:
-    name:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-compose-plugin
-    state: present
-    update_cache: yes
-  when: ansible_os_family == "Debian"
-
 # ── AlmaLinux / RHEL / CentOS ────────────────
 
-- name: Install prerequisites (RedHat)
+- name: Install Podman (RedHat)
   ansible.builtin.yum:
     name:
-      - yum-utils
-      - device-mapper-persistent-data
-      - lvm2
+      - podman
+      - podman-docker    # Provides `docker` → `podman` alias
     state: present
   when: ansible_os_family == "RedHat"
 
-- name: Add Docker repository (RedHat)
-  ansible.builtin.shell: |
-    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-  when: ansible_os_family == "RedHat"
+# ── Ubuntu / Debian ──────────────────────────
 
-- name: Install Docker CE (RedHat)
-  ansible.builtin.yum:
+- name: Install Podman (Debian/Ubuntu)
+  ansible.builtin.apt:
     name:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-compose-plugin
+      - podman
+      - podman-docker    # Provides `docker` → `podman` alias
     state: present
-  when: ansible_os_family == "RedHat"
+    update_cache: yes
+  when: ansible_os_family == "Debian"
 
 # ── Common ───────────────────────────────────
-
-- name: Ensure Docker service is started and enabled
-  ansible.builtin.systemd:
-    name: docker
-    state: started
-    enabled: yes
 
 - name: Install Git
   ansible.builtin.package:
     name: git
     state: present
 
-- name: Install Python3 pip (for Ansible Docker modules)
+- name: Install Python3 pip
   ansible.builtin.package:
     name: python3-pip
     state: present
 
-- name: Install Docker SDK for Python (Ansible community.docker)
+- name: Install podman-compose
   ansible.builtin.pip:
     name:
-      - docker
-      - docker-compose
+      - podman-compose     # `podman-compose` CLI for docker-compose.yml support
     state: present
+    extra_args: --break-system-packages  # AlmaLinux/RHEL need this for system pip
+
+
+- name: Ensure app directory exists
+  ansible.builtin.file:
+    path: "{{ app_path }}"
+    state: directory
+    mode: '0755'
