@@ -1,11 +1,10 @@
 ---
 # ============================================
-# SIMOP KJPP — Main Ansible Playbook
+# SIMOP KJPP — Main Ansible Playbook (Podman)
 # ============================================
 # Usage:
-#   ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml
-#   ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml --tags rollback
 #   ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml --extra-vars "git_repo=https://github.com/you/repo.git"
+#   ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml --tags rollback
 # ============================================
 
 - name: Deploy SIMOP KJPP Application
@@ -13,9 +12,8 @@
   gather_facts: yes
   become: yes
 
-  vars:
-    git_repo: "{{ git_repo | default('') }}"
-    git_branch: "{{ git_branch | default('main') }}"
+  # git_repo and git_branch are passed via --extra-vars
+  # Example: --extra-vars "git_repo=https://github.com/you/repo.git git_branch=main"
 
   roles:
     - role: webserver
@@ -23,16 +21,9 @@
 
     - role: app
       tags: [app]
-      notify: rollback
 
     - role: rollback
       tags: [rollback]
-      when: rollback_triggered | default(false)
-
-  handlers:
-    - name: rollback
-      ansible.builtin.include_role:
-        name: rollback
       when: rollback_triggered | default(false)
 
   post_tasks:

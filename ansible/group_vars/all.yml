@@ -4,10 +4,9 @@
 app_name: simop
 app_path: /var/www/simop
 app_port: 8080
-docker_network: simop-network
 
 # Git settings
-git_repo: ""  # Set in inventory or extra vars: --extra-vars "git_repo=https://github.com/you/repo.git"
+git_repo: ""  # Set in inventory or extra vars
 git_branch: main
 
 # Rollback settings

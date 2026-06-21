@@ -11,8 +11,10 @@ FROM php:8.3-fpm-alpine AS base
 RUN apk add --no-cache \
     nginx \
     curl \
+    curl-dev \
     zip \
     unzip \
+    sqlite-dev \
     libxml2-dev \
     libzip-dev \
     oniguruma-dev \
@@ -33,7 +35,7 @@ RUN apk add --no-cache \
 # --------------------------------------------
 # Install Composer
 # --------------------------------------------
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
 
 # --------------------------------------------
 # Configure Nginx

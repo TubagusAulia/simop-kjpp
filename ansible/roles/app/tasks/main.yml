@@ -1,6 +1,6 @@
 ---
 # ============================================
-# App Role — Deploy Laravel App via Docker Compose
+# App Role — Deploy Laravel App via Podman Compose
 # ============================================
 
 - name: Ensure app directory exists
@@ -13,10 +13,9 @@
   ansible.builtin.git:
     repo: "{{ git_repo }}"
     dest: "{{ app_path }}"
-    version: "{{ git_branch }}"
+    version: "{{ git_branch | default('main') }}"
     force: yes
   when: git_repo | length > 0
-  notify: Build and deploy app
 
 - name: Copy .env.example to .env (if .env doesn't exist)
   ansible.builtin.copy:
@@ -24,14 +23,6 @@
     dest: "{{ app_path }}/.env"
     remote_src: yes
     force: no
-
-- name: Generate Laravel app key (if not set)
-  ansible.builtin.shell: |
-    cd {{ app_path }}
-    php artisan key:generate --no-interaction
-  args:
-    creates: "{{ app_path }}/.env"
-  ignore_errors: yes
 
 - name: Ensure database directory is writable
   ansible.builtin.file:
@@ -54,47 +45,36 @@
     mode: '0775'
     recurse: yes
 
-# ── Docker Compose Deploy ────────────────────
+# ── Podman Compose Deploy ────────────────────
 
-- name: Build Docker image
-  community.docker.docker_compose_v2:
-    project_src: "{{ app_path }}"
-    build: yes
-    state: present
-  register: compose_build
+- name: Tear down existing containers (if any)
+  ansible.builtin.command:
+    cmd: /usr/local/bin/podman-compose down
+    chdir: "{{ app_path }}"
+  ignore_errors: yes
 
-- name: Start containers
-  community.docker.docker_compose_v2:
-    project_src: "{{ app_path }}"
-    state: present
-    restarted: "{{ compose_build.changed }}"
+- name: Build and start containers with /usr/local/bin/podman-compose
+  ansible.builtin.command:
+    cmd: /usr/local/bin/podman-compose up -d --build
+    chdir: "{{ app_path }}"
+  register: compose_result
 
-- name: Wait for app to be healthy
+- name: Wait for app to be reachable
   ansible.builtin.uri:
     url: "http://localhost:{{ app_port }}/"
     status_code: 200
-    timeout: 10
+    timeout: 15
   register: health_check
-  retries: 10
+  retries: 15
   delay: 5
   until: health_check.status == 200
 
 - name: Run database migrations
-  community.docker.docker_compose_v2_exec:
-    project_src: "{{ app_path }}"
-    service: app
-    command: php artisan migrate --force --no-interaction
+  ansible.builtin.command:
+    cmd: /usr/local/bin/podman-compose exec -T app php artisan migrate --force --no-interaction
+    chdir: "{{ app_path }}"
 
 - name: Cache Laravel configuration
-  community.docker.docker_compose_v2_exec:
-    project_src: "{{ app_path }}"
-    service: app
-    command: >
-      sh -c "php artisan config:cache &&
-             php artisan route:cache &&
-             php artisan view:cache"
-
-# ── Handlers ─────────────────────────────────
-
-# Handler: rebuild and redeploy when code changes
-# (triggered by git notify above)
+  ansible.builtin.command:
+    cmd: /usr/local/bin/podman-compose exec -T app sh -c "php artisan config:cache && php artisan route:cache && php artisan view:cache"
+    chdir: "{{ app_path }}"

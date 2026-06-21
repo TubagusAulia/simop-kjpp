@@ -4,37 +4,54 @@
 
 ---
 
+## Tentang Container Runtime: Podman
+
+Project ini menggunakan **Podman** sebagai container runtime, bukan Docker CE.
+
+**Mengapa Podman?**
+- Podman adalah drop-in replacement untuk Docker — `docker-compose.yml` dan `Dockerfile` tetap kompatibel
+- Rootless by default (lebih aman)
+- Daemonless architecture (tanpa `dockerd`)
+- `podman-docker` menyediakan alias `docker` → `podman`, sehingga semua perintah Docker familiar tetap bekerja
+
+**Podman vs Docker — Apa yang sama?**
+| Konsep | Docker | Podman |
+|---|---|---|
+| Dockerfile | ✅ `docker build` | ✅ `podman build` |
+| docker-compose.yml | ✅ `docker compose` | ✅ `podman-compose` |
+| Images / Containers | ✅ | ✅ |
+| Volumes / Networks | ✅ | ✅ |
+| Dockerfile format | Identik | Identik |
+
+---
+
 ## 1. Prerequisites (di Server Kamu)
 
 Server kamu membutuhkan software berikut:
 
 | Software | Versi Minimum | Fungsi |
 |---|---|---|
-| **Docker CE** | 24.0+ | Menjalankan container |
-| **Docker Compose** | 2.0+ | Mengatur container |
+| **Podman** | 5.x | Menjalankan container |
+| **podman-compose** | 1.x | Mengatur container (via pip) |
+| **podman-docker** | — | Alias `docker` → `podman` |
 | **Git** | 2.x | Pull code dari GitHub |
 | **Ansible** (di laptop kamu) | 2.14+ | Deploy ke server |
 
-### Install Docker di Server
+> **Catatan:** Podman biasanya sudah ter-install di AlmaLinux. Ansible webserver role akan menginstall podman-compose (via pip) dan podman-docker secara otomatis.
+
+### Install Podman di Server (Jika Belum Ada)
+
+**AlmaLinux / RHEL / CentOS:**
+```bash
+sudo dnf install -y podman podman-docker
+pip install podman-compose
+```
 
 **Ubuntu / Debian:**
 ```bash
 sudo apt update
-sudo apt install -y ca-certificates curl gnupg
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.asc
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-```
-
-**AlmaLinux / RHEL / CentOS:**
-```bash
-sudo yum install -y yum-utils
-sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-sudo yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-sudo systemctl start docker
-sudo systemctl enable docker
+sudo apt install -y podman podman-docker
+pip install podman-compose
 ```
 
 ### Install Ansible (di Laptop Kamu)
@@ -120,9 +137,9 @@ ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml --extra-vars "g
 ```
 
 Perintah ini akan:
-1. Install Docker di server (jika belum ada)
+1. Install Podman + podman-compose + podman-docker di server (jika belum ada)
 2. Clone repo
-3. Build Docker image
+3. Build container image
 4. Start container
 5. Jalankan migration
 6. Cache config/routes/views
@@ -155,30 +172,31 @@ Jika deploy bermasalah dan perlu dikembalikan ke versi sebelumnya:
 ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml --tags rollback
 ```
 
-Ini akan revert ke Docker image tag sebelumnya.
+Ini akan revert ke container image tag sebelumnya.
 
 ---
 
 ## 9. Perintah Berguna
 
 ```bash
-# Cek status container
+# Cek status container (pakai `docker` alias atau `podman` langsung)
 docker ps
+podman ps
 
 # Lihat logs
-docker logs simop-app -f
+podman logs simop-app -f
 
 # Jalankan perintah artisan di dalam container
-docker exec -it simop-app php artisan tinker
+podman exec -it simop-app php artisan tinker
 
 # Jalankan tests di dalam container
-docker exec -it simop-app php artisan test
+podman exec -it simop-app php artisan test
 
 # Stop semua container
-docker compose down
+podman-compose down
 
 # Rebuild dari awal
-docker compose build --no-cache && docker compose up -d
+podman-compose build --no-cache && podman-compose up -d
 ```
 
 ---
@@ -187,8 +205,8 @@ docker compose build --no-cache && docker compose up -d
 
 | Masalah | Solusi |
 |---|---|
-| `docker: permission denied` | `sudo usermod -aG docker $USER` lalu logout dan login kembali |
+| `podman-compose: command not found` | `pip install podman-compose` di server |
 | `port 8080 already in use` | Ganti port di `docker-compose.override.yml` |
-| `SQLite database locked` | `docker compose down && docker compose up -d` |
-| `500 Server Error` | Cek logs: `docker logs simop-app -f` |
+| `SQLite database locked` | `podman-compose down && podman-compose up -d` |
+| `500 Server Error` | Cek logs: `podman logs simop-app -f` |
 | `SSH connection refused` | Cek firewall: `sudo ufw allow 22` |
